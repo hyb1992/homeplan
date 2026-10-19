@@ -13,6 +13,13 @@ export function releaseStatus(release,currentVersion,currentBuild='development')
   const newerBuild=difference===0&&/^[a-f0-9]{40}$/.test(currentBuild)&&/^[a-f0-9]{40}$/.test(release.target_commitish||'')&&currentBuild!==release.target_commitish;
   return {available:difference>0||newerBuild,version:remote.slice(1,4).join('.'),url:asset.browser_download_url};
 }
+export function newerWebBuild(current,latest){
+  if(!current||latest.build===current.build)return false;
+  const parse=value=>String(value).match(/^(\d+)\.(\d+)\.(\d+)$/);
+  const a=parse(latest.version),b=parse(current.version);if(!a||!b)return false;
+  for(let i=1;i<=3;i++){const difference=Number(a[i])-Number(b[i]);if(difference)return difference>0;}
+  return Number.isFinite(Date.parse(latest.built_at))&&Date.parse(latest.built_at)>Date.parse(current.built_at);
+}
 export function installUpdateNotice({canReload=()=>true,beforeReload=()=>{}}={}){
   const panel=document.createElement('div');panel.className='update-notice';panel.id='update-notice';
   panel.innerHTML='<span id="update-state" role="status">버전 확인 중…</span><button class="button small" id="update-check" type="button">새 버전 확인</button><button class="button small soft" id="update-apply" type="button" hidden>업데이트 적용</button>';
@@ -48,7 +55,7 @@ export function installUpdateNotice({canReload=()=>true,beforeReload=()=>{}}={})
         const response=await fetch(new URL('./build.json',import.meta.url),{cache:'no-store',signal:AbortSignal.timeout(6000)});
         if(!response.ok)throw new Error('unavailable');
         const latest=await response.json(),current=globalThis.HOMEPLAN_BUILD;
-        if(current&&latest.build!==current.build){ready={version:latest.version};apply.hidden=false;status.textContent=`새 버전 v${latest.version} · 자동 적용 준비 완료`;await applyReady();}
+        if(newerWebBuild(current,latest)){ready={version:latest.version};apply.hidden=false;status.textContent=`새 버전 v${latest.version} · 자동 적용 준비 완료`;await applyReady();}
         else{status.textContent=`v${latest.version} · 최신 버전입니다`;apply.hidden=true;}
         return;
       }

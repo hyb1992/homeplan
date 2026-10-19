@@ -71,8 +71,15 @@ def main() -> None:
         repo = Repository(root / "data/homeplan.local.sqlite")
         repo.seed("actual", "UPDATE_SYNTHETIC_ONLY", payload)
         with socket.socket() as probe:
-            probe.bind(("127.0.0.1", 0))
-            port = probe.getsockname()[1]
+            for candidate_port in range(21000, 22000):
+                try:
+                    probe.bind(("127.0.0.1", candidate_port))
+                    port = candidate_port
+                    break
+                except OSError:
+                    continue
+            else:
+                raise RuntimeError("No isolated test port available")
         environment = {**os.environ, "HOMEPLAN_DATA_ROOT": str(root), "HOMEPLAN_MANAGED_CHILD": "1"}
         environment.pop("HOMEPLAN_DISABLE_UPDATES", None)
         process = subprocess.Popen(
@@ -92,6 +99,11 @@ def main() -> None:
                 page.on("pageerror", lambda error: errors.append(str(error)))
                 url = f"http://127.0.0.1:{port}/#settings"
                 page.goto(url)
+                income = page.locator(".settings-group").filter(
+                    has=page.locator("#field-husband_net_pay")
+                )
+                expect(income).to_be_attached(timeout=30000)
+                income.locator("summary").click()
                 expect(page.locator("#field-husband_net_pay")).to_be_visible(timeout=30000)
                 page.evaluate("localStorage.setItem('update-preserve-marker','synthetic-profile')")
                 page.locator("#field-husband_net_pay").fill("777만원")

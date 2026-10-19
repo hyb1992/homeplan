@@ -58,3 +58,11 @@ if(releaseStatus(updateRelease,'0.4.10').available)throw new Error('older releas
 if(releaseStatus({...updateRelease,prerelease:true},'0.4.1').available)throw new Error('prerelease offered');
 if(releaseStatus({...updateRelease,assets:[{name:'HomePlan-Windows-x64.zip',browser_download_url:'https://evil.invalid/test.zip'}]},'0.4.1').available)throw new Error('foreign download offered');
 if(releaseStatus(updateRelease,'0.4.2','a'.repeat(40)).available)throw new Error('current build offered');
+
+
+import {newerWebBuild} from '../../web/update-notice.mjs';
+const webBuild={version:'0.6.1',build:'a',built_at:'2026-10-19T12:00:00Z'};
+if(newerWebBuild(webBuild,{version:'0.6.0',build:'b',built_at:'2026-10-19T13:00:00Z'}))throw new Error('web downgrade/reload loop');
+if(newerWebBuild(webBuild,{...webBuild,build:'b',built_at:'2026-10-19T11:00:00Z'}))throw new Error('stale build/reload loop');
+if(!newerWebBuild(webBuild,{...webBuild,build:'b',built_at:'2026-10-19T13:00:00Z'}))throw new Error('new web build missed');
+if(!newerWebBuild(webBuild,{version:'0.7.0',build:'b'}))throw new Error('new web version missed');

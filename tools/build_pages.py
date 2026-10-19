@@ -8,6 +8,7 @@ import shutil
 import subprocess
 import tempfile
 import zipfile
+from datetime import UTC, datetime
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -46,7 +47,8 @@ def main() -> None:
         package.write(
             ROOT / "tests/fixtures/synthetic_household.json", "homeplan/demo_household.json"
         )
-    fingerprint = hashlib.sha256(archive.read_bytes()).hexdigest()[:16]
+    # Frontend-only releases must invalidate browser module caches as well.
+    fingerprint = hashlib.sha256(archive.read_bytes() + revision.encode()).hexdigest()[:16]
     assets = [path.name for path in output.iterdir() if path.suffix in {".js", ".mjs", ".css"}]
     for path in output.iterdir():
         if path.suffix in {".js", ".mjs"}:
@@ -72,6 +74,7 @@ def main() -> None:
                     ["git", "rev-parse", "HEAD"], cwd=ROOT, text=True
                 ).strip(),
                 "version": __import__("homeplan").__version__,
+                "built_at": datetime.now(UTC).isoformat(),
             }
         ),
         "utf-8",
