@@ -136,7 +136,7 @@ def check(url: str, folder: Path) -> None:
         browser.close()
 
 
-def main() -> None:
+def main(checker=check) -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("--pages", type=Path)
     pages = parser.parse_args().pages
@@ -152,7 +152,7 @@ def main() -> None:
             server = http.server.ThreadingHTTPServer(("127.0.0.1", 0), handler)
             threading.Thread(target=server.serve_forever, daemon=True).start()
             try:
-                check(f"http://127.0.0.1:{server.server_port}/{pages.name}/", seed)
+                checker(f"http://127.0.0.1:{server.server_port}/{pages.name}/", seed)
             finally:
                 server.shutdown()
         else:
@@ -189,13 +189,11 @@ def main() -> None:
                     except httpx.ConnectError:
                         pass
                     time.sleep(0.1)
-                check(url, seed)
+                checker(url, seed)
             finally:
                 process.terminate()
                 process.wait(timeout=10)
-    print(
-        "PASS: leave, repayment CSV, bank CRUD/select, Excel preview/merge/new plan, preservation, mobile"
-    )
+    print("PASS:", checker.__module__, "with isolated synthetic data, persistence and mobile")
 
 
 if __name__ == "__main__":

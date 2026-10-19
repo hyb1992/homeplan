@@ -27,14 +27,16 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
-      - run: node --test tests/web/test_form_inputs.mjs
+      - run: node --test tests/web/*.mjs
       - run: uv run python -m playwright install --with-deps chromium
       - run: uv run python tools/check_web_upgrade.py
+      - run: uv run python tools/check_fund_builder.py
       - run: uv run python tools/build_pages.py
       - name: Browser calculation and persistence
         run: |
           SITE=$(python -c "import json; print(json.load(open('data/pages-build.local.json'))['directory'])")
           uv run python tools/check_pages.py "$SITE"
+          uv run python tools/check_fund_builder.py --pages "$SITE"
       - name: Pages output
         id: pages
         run: echo "directory=$(python -c "import json; print(json.load(open('data/pages-build.local.json'))['directory'])")" >> "$GITHUB_OUTPUT"
