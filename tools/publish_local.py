@@ -46,7 +46,8 @@ def main() -> None:
             data=json.dumps(body).encode() if body is not None else None,
         )
         with urllib.request.urlopen(request, timeout=30) as response:
-            return json.load(response)
+            content = response.read()
+            return json.loads(content) if content else {}
 
     def git(*command: str, cwd: Path = ROOT) -> str:
         return subprocess.check_output(["git", *command], cwd=cwd, text=True).strip()
@@ -117,6 +118,7 @@ def main() -> None:
         api(
             "/pages", "PUT", {"build_type": "legacy", "source": {"branch": "gh-pages", "path": "/"}}
         )
+        api("/pages/builds", "POST")
         print("Pages initial publication requested: https://hyb1992.github.io/homeplan/")
 
 
