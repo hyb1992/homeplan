@@ -1,0 +1,24 @@
+meta:
+  source: "근로기준법 제74조, 고용보험법 시행령 제95조, 고용24 제도안내, 복지로"
+  checked_at: "2026-09-20"
+  status: "공식 기준 확인 필요"
+maternity_leave:
+  days: 90
+  days_multiple_birth: 120
+  min_days_after_birth: 45
+  employment_insurance_monthly_cap: 2200000   # 2026, 대규모기업은 최초 60일 회사 지급
+parental_leave_benefit:
+  source_url: "https://m.work24.go.kr/cm/c/f/1100/selecSystInfo.do?systId=SI00000402"
+  six_plus_six_checked_at: "2026-10-18"
+  base_months: 12
+  extended_months_if_both_parents_3m: 18
+  brackets:   # from_month 이상
+    - {from_month: 1, rate: 1.00, cap: 2500000, floor: 700000}
+    - {from_month: 4, rate: 1.00, cap: 2000000, floor: 700000}
+    - {from_month: 7, rate: 0.80, cap: 1600000, floor: 700000}
+  six_plus_six_caps: [2500000, 2500000, 3000000, 3500000, 4000000, 4500000]
+cash_support:   # 출산월 = 0개월
+  - {name: 부모급여(0세), monthly: 1000000, from_month: 0,  to_month: 11, cash: true}
+  - {name: 부모급여(1세), monthly: 500000,  from_month: 12, to_month: 23, cash: true}
+  - {name: 아동수당,      monthly: 100000,  from_month: 0,  to_month: 95, cash: true}
+  - {name: 첫만남이용권,  lump_sum: 2000000, cash: false, note: "바우처 → 현금흐름 제외"}

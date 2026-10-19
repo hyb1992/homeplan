@@ -1,0 +1,30 @@
+{
+  "_about": "가상 가구 — 실제 가구와 무관한 CI 입력",
+  "settings": {
+    "asset_base_date": "2026-09-10", "contract_date": "2026-11-02",
+    "interim_date": "2026-12-01", "interim_amount": 50000000,
+    "closing_date": "2027-02-26", "move_in_date": "2027-03-02",
+    "lease_refund_date": "잔금일", "lease_loan_repay_date": "보증금반환일",
+    "payday": 25, "husband_net_pay": 4000000, "wife_net_pay": 3000000,
+    "husband_gross": 60000000, "wife_gross": 45000000,
+    "living_cost": 2000000, "lease_loan_rate": 0.036,
+    "mgmt_fee_default": 200000, "property_tax_annual": 1200000,
+    "mortgage_desired": 300000000, "bank_confirmed_limit": 300000000,
+    "mortgage_rate": 0.04, "mortgage_years": 30, "loan_status": "승인 완료",
+    "credit_use": true, "credit_amount": 30000000, "credit_rate": 0.05,
+    "credit_draw_date": "잔금일+1", "credit_status": "확인 완료",
+    "monthly_repay_limit": 2000000, "monthly_spend_limit": 6000000,
+    "min_emergency_cash": 10000000, "target_cash_after_purchase": 10000000,
+    "lawyer_fee": 1000000, "repair_default": 10000000,
+    "comparison_area_m2": 59.9
+  },
+  "fund_events": [
+    {"id": "A01", "name": "가상 예금", "type": "현금·예금", "value": 80000000, "status": "확인 완료"},
+    {"id": "A02", "name": "가상 적금 만기", "type": "적금·청년도약계좌", "value": 20000000, "available_date": "2026-12-20", "status": "미확정"},
+    {"id": "A03", "name": "가상 보증금", "type": "전세보증금", "value": 200000000, "available_date": "보증금반환일", "status": "확인 완료"},
+    {"id": "L01", "name": "가상 전세대출", "type": "기존 전세대출(부채)", "value": 100000000, "available_date": "전세대출상환일", "status": "확인 완료"}
+  ],
+  "parent_support": [{"id": "P01", "to": "공동", "kind": "증여", "amount": 100000000, "date": "2027-01-15", "status": "예정"}],
+  "listings": [{"id": "S1", "name": "가상 아파트", "price": 580000000, "appraisal": 580000000, "area_m2": 59.9, "repair": 10000000, "mgmt_fee": 200000}],
+  "selected_listing": "S1"
+}

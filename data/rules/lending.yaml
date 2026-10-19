@@ -1,0 +1,42 @@
+meta:
+  source: "금융위원회 가계부채 대책(2025-06-27, 2025-10-15), 스트레스 DSR 3단계 운영방안, 금융위 정책문답, 은행 안내"
+  checked_at: "2026-10-17"
+  status: "은행 확인 필요"
+ltv:
+  first_home_regulated: 0.70
+  general_regulated: 0.40
+mortgage_amount_cap_capital_area:   # 수도권·규제지역, 주택가격 초과 기준
+  - {price_over: 0,          cap: 600000000}
+  - {price_over: 1500000000, cap: 400000000}
+  - {price_over: 2500000000, cap: 200000000}
+dsr:
+  bank_limit: 0.40
+  nonbank_limit: 0.50            # 신협 등 2금융권
+  applies_if_total_loans_over: 100000000   # 차주 기존+신규 총대출 1억 초과 시 차주단위 DSR 적용
+  credit_lump_sum_annual: "원금 / 5 + 원금 × 금리"
+  equal_principal_basis_default: "전체 평균"   # D-007, 은행별 옵션
+  deposit_secured_loan: "이자만 반영"
+  lease_loan: "이자만 반영, 잔금일 상환 조건이면 제외"
+  insurance_policy_loan: "제외"
+stress_dsr:
+  capital_area_mortgage_base: 0.030
+  type_ratio: {variable: 1.00, hybrid_fixed_5y_30y: 0.80, periodic_5y: 0.40, fixed_long: 0.0}
+  credit_loan: "잔액 1억 초과분만 적용"
+credit_loan_rules:
+  income_cap_ratio: 1.0          # 전 금융권 신용대출 합산 연소득 이내
+  purchase_restriction: "1억 원 이상 신용대출 후 1년 내 규제지역 주택 구입 시 회수"
+  employee_loan_offers_2026_07:   # 롯데이노베이트 임직원 신용대출 안내장(최저~)
+    - {bank: 신한, base: 0.0327, spread: 0.0181, max_discount: 0.010, salary_discount: 0.004}
+    - {bank: KB,   base: 0.0324, spread: 0.0190, max_discount: 0.009, salary_discount: 0.003}
+    - {bank: 우리, base: 0.0305, spread: 0.0240, max_discount: 0.012, salary_discount: 0.007}
+    - {bank: 하나, base: 0.03145, spread: 0.0210, max_discount: 0.009, salary_discount: 0.004}
+subscription_secured_loan:
+  ratio: 0.90                    # 납입 원금의 90~95%
+  spread_range: [0.010, 0.013]
+  savings_rate_max: 0.031
+
+calculation:
+  credit_dsr_years: 5
+  credit_purchase_safe_cap: 99999999
+  credit_round_unit: 1000000
+  subscription_round_unit: 100000

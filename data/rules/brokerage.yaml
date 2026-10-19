@@ -1,0 +1,15 @@
+# 서울특별시 주택 매매 중개보수 상한 요율 (부가세 별도)
+meta:
+  source: "서울특별시 부동산 중개보수 요율표(매매)"
+  checked_at: "2026-09-20"
+  status: "공식 기준 확인 필요"
+vat_rate: 0.10
+rounding: "10원 미만 절사"
+brackets:   # price_from 이상
+  - {price_from: 0,          rate: 0.006, cap: 250000}
+  - {price_from: 50000000,   rate: 0.005, cap: 800000}
+  - {price_from: 200000000,  rate: 0.004, cap: null}
+  - {price_from: 900000000,  rate: 0.005, cap: null}
+  - {price_from: 1200000000, rate: 0.006, cap: null}
+  - {price_from: 1500000000, rate: 0.007, cap: null}
+negotiated_rate: "입력 시 상한보다 낮으면 적용. 매물별 협의 금액이 있으면 우선"

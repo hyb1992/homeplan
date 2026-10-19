@@ -1,0 +1,23 @@
+name: checks
+on: [pull_request, workflow_dispatch]
+jobs:
+  checks:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v6
+        with:
+          python-version: '3.12'
+          enable-cache: true
+      - run: uv sync --locked --dev
+      - run: uv run ruff check .
+      - run: uv run ruff format --check .
+      - run: uv run mypy src/homeplan
+      - run: uv run pytest -q
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: node --test tests/web/test_form_inputs.mjs
+      - run: uv run python -m playwright install --with-deps chromium
+      - run: uv run python tools/check_web_upgrade.py

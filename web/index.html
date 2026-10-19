@@ -1,0 +1,33 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="theme-color" content="#173d35">
+  <title>우리집 · 매수계획</title>
+  <link rel="icon" type="image/svg+xml" href="/icon.svg">
+  <link rel="stylesheet" href="/styles.css">
+</head>
+<body>
+  <div class="app-shell">
+    <aside class="sidebar">
+      <a class="brand" href="#plan"><span class="brand-icon"><svg viewBox="0 0 32 32" fill="none"><path d="M4 14 16 4l12 10M8 12v15h16V12M13 27v-9h6v9" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></span><span>우리집<small>두 사람의 매수계획</small></span></a>
+      <p class="nav-label">우리의 계획</p>
+      <nav id="navigation" aria-label="주 메뉴"></nav>
+      <div class="sidebar-note"><span class="small-house">⌂</span><strong>숫자에 담는<br>우리의 다음 집</strong><p>일정과 자금을 함께 보며<br>차근차근 준비해요.</p></div>
+      <div class="sidebar-bottom"><button id="history-button" class="sidebar-tool">저장 기록 · 복원</button><span class="local-status"><i></i> 이 컴퓨터에 저장</span></div>
+    </aside>
+    <div class="main-shell">
+      <header class="topbar"><div class="breadcrumb">우리집 <span>/</span> <b id="breadcrumb-title">매수계획</b></div><div id="workspace-switch" class="segmented" role="group" aria-label="사용할 데이터"></div><button id="export-button" class="icon-button" title="입력값 내보내기" aria-label="입력값 내보내기">↓</button></header>
+      <main>
+        <div class="page-heading"><div><p class="eyebrow" id="page-eyebrow">OUR FIRST HOME</p><h1 id="page-title">매수 계획을 한눈에</h1><p id="page-description">매물과 일정을 바꾸며 우리 가족의 자금을 확인하세요.</p></div><div class="heading-actions"><span id="save-state" class="save-state">불러오는 중</span><button id="toolbar-calculate" class="button">다시 계산</button><button id="save-button" class="button primary" disabled>변경사항 저장</button></div></div>
+        <div id="content"><div class="loading-card"><span class="spinner"></span> 우리집 계획을 불러오고 있어요.</div></div>
+      </main>
+      <footer><span>우리집 매수계획</span><span>예정 자금과 은행 조건을 함께 확인하세요.</span></footer>
+    </div>
+  </div>
+  <dialog id="modal" aria-labelledby="modal-title"><div class="modal-heading"><h2 id="modal-title"></h2><button id="modal-close" class="icon-button" aria-label="닫기">×</button></div><div id="modal-body"></div></dialog>
+  <div id="toast" role="status" aria-live="polite"></div>
+  <script type="module" src="/app.js"></script>
+</body>
+</html>

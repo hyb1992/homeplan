@@ -1,0 +1,18 @@
+repos:
+  - repo: local
+    hooks:
+      - id: private-inputs
+        name: 실제 입력·엑셀·백업 커밋 차단
+        entry: python tools/check_private_files.py
+        language: system
+        types: [file]
+      - id: ruff-check
+        name: ruff check
+        entry: uv run ruff check
+        language: system
+        types: [python]
+      - id: ruff-format
+        name: ruff format
+        entry: uv run ruff format --check
+        language: system
+        types: [python]

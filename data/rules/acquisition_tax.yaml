@@ -1,0 +1,23 @@
+# 주택 유상취득 취득세 (1세대 1주택 기준). 중과는 manual_rate로 처리.
+meta:
+  source: "지방세법 제11조, 지방세특례제한법 제36조의3, 행안부 2026 지방세제 개편안 보도(2026-08-26)"
+  checked_at: "2026-09-20"
+  status: "공식 기준 확인 필요"
+rate:
+  lower_price: 600000000      # 이하 1%
+  upper_price: 900000000      # 초과 3%
+  lower_rate: 0.01
+  upper_rate: 0.03
+  middle: "lower_rate + (price - lower_price) / (upper_price - lower_price) * (upper_rate - lower_rate), 소수 넷째 자리 반올림"
+  rounding: "세액 10원 미만 절사"
+local_education_tax:
+  ratio_of_acquisition_tax: 0.10   # 감면 전 취득세 기준(D-006)
+rural_special_tax:
+  rate: 0.002
+  applies_if_area_m2_over: 85
+first_home_relief:
+  cap: 2000000
+  max_price: 1200000000
+  until: "2028-12-31"
+  conditions: ["본인·배우자 주택 보유 이력 없음", "취득 후 3개월 내 전입", "3년 이상 실거주(위반 시 추징)"]
+  note: "개편안의 40세 미만 300만원 한도는 입법예고 단계 → 미반영"

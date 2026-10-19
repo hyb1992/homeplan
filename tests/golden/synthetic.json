@@ -1,0 +1,9 @@
+{
+  "_about": "HANDOFF_CODEX §6.4의 손계산 기대값. 금액은 원 단위 일치.",
+  "cases": [
+    {"id": "S01", "overrides": {}, "expected": {"contract_cash_available": 89400000, "interim_cash_available_before_deposit": 94100000, "interim_shortfall": 13900000, "min_balance_overall": -13900000, "month_end_min_balance": 10800000, "closing_cash_available": 328200000, "mortgage_first_payment": 1432246}, "status": "현금 부족", "costs": {"closing_costs_total": 11375700}},
+    {"id": "S02", "overrides": {"interim_date": "2027-01-20"}, "price": 610000000, "expected": {"min_balance_overall": 5832150, "month_end_min_balance": 29074904}, "month_end": {"2027-02": 35832150}, "status": "비상금 부족", "costs": {"closing_costs_total": 12367850}},
+    {"id": "S03", "overrides": {"interim_date": "2027-01-20", "closing_date": "2027-03-15", "move_in_date": "2027-03-16"}, "expected": {"closing_cash_available": 327900000}, "status": "일정 조건 위반"},
+    {"id": "S04", "overrides": {"interim_date": "2027-01-20"}, "max_price": 606100000, "binding": "최소 비상금", "at_max_minimum": 10003090}
+  ]
+}

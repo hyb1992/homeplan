@@ -1,0 +1,14 @@
+meta:
+  source: "서울시 ETAX 카드사 무이자 할부 이벤트(월별 갱신), 카드사 공시"
+  checked_at: "2026-09-29"
+  status: "매월 확인 필요"
+local_tax_card_fee: 0
+events_2026_09:
+  BC:   {full_free_months: [2, 3], partial: {6: 3, 10: 4, 12: 5}}
+  우리: {full_free_months: [2, 3], partial: {6: 3, 10: 4, 12: 5}}
+  신한: {full_free_months: [], partial: {6: 3, 10: 4, 12: 5}}
+  KB:   {full_free_months: [], partial: {6: 3, 10: 5, 12: 5}}
+  현대: {full_free_months: [], partial: {6: 3, 10: 5, 12: 6}}
+  하나: {full_free_months: [], partial: {6: 3, 10: 4, 12: 5}}
+fee_rate_range: [0.055, 0.199]     # 신규 회원은 상단(15~18%)에서 시작하는 경우가 많음
+note: "partial 값 = 앞에서부터 고객이 수수료를 내는 회차 수"

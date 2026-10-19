@@ -1,0 +1,184 @@
+{
+  "_about": "공개 배포용 반올림 가상 입력. 개인 golden은 로컬에서 별도 보존.",
+  "cases": [
+    {
+      "id": "U01",
+      "fn": "acquisition_taxes",
+      "in": {
+        "price": 1150000000,
+        "area_m2": 84.97,
+        "first_home_relief": true,
+        "closing_date": "2027-03-27"
+      },
+      "out": {
+        "rate": 0.03,
+        "acquisition_tax": 34500000,
+        "education_tax": 3450000,
+        "rural_tax": 0,
+        "relief": 2000000,
+        "total": 35950000
+      }
+    },
+    {
+      "id": "U02",
+      "fn": "acquisition_taxes",
+      "in": {
+        "price": 600000000,
+        "area_m2": 59.9,
+        "first_home_relief": false
+      },
+      "out": {
+        "rate": 0.01,
+        "acquisition_tax": 6000000,
+        "education_tax": 600000
+      }
+    },
+    {
+      "id": "U03",
+      "fn": "acquisition_taxes",
+      "in": {
+        "price": 750000000,
+        "area_m2": 59.9,
+        "first_home_relief": false
+      },
+      "out": {
+        "rate": 0.02,
+        "acquisition_tax": 15000000
+      }
+    },
+    {
+      "id": "U04",
+      "fn": "acquisition_taxes",
+      "in": {
+        "price": 900000000,
+        "area_m2": 59.9,
+        "first_home_relief": false
+      },
+      "out": {
+        "rate": 0.03,
+        "acquisition_tax": 27000000
+      }
+    },
+    {
+      "id": "U05",
+      "fn": "acquisition_taxes",
+      "in": {
+        "price": 1200000010,
+        "area_m2": 85.1,
+        "first_home_relief": true,
+        "closing_date": "2027-03-27"
+      },
+      "out": {
+        "relief": 0,
+        "rural_tax": 2400000
+      }
+    },
+    {
+      "id": "U06",
+      "fn": "brokerage_fee",
+      "cases": [
+        {
+          "price": 1150000000,
+          "out": 6325000
+        },
+        {
+          "price": 900000000,
+          "out": 4950000
+        },
+        {
+          "price": 899999999,
+          "out": 3959990
+        }
+      ]
+    },
+    {
+      "id": "U07",
+      "fn": "registration_costs",
+      "in": {
+        "price": 1150000000,
+        "loan": 574000000
+      },
+      "out": {
+        "lawyer": 2000000,
+        "registry": 50000,
+        "bond_burden": 2317250,
+        "stamp_loan_borrower": 75000,
+        "stamp_sale_contract": 350000,
+        "total": 4792250
+      }
+    },
+    {
+      "id": "U08",
+      "fn": "mortgage_first_payment",
+      "in": {
+        "amount": 574000000,
+        "rate": 0.0493,
+        "years": 30,
+        "method": "원리금균등"
+      },
+      "out": 3056847
+    },
+    {
+      "id": "U09",
+      "fn": "mortgage_first_payment",
+      "in": {
+        "amount": 600000000,
+        "rate": 0.0513,
+        "years": 30,
+        "method": "원금균등"
+      },
+      "out": 4231667
+    },
+    {
+      "id": "U13",
+      "fn": "card_installments",
+      "in": {
+        "amount": 35950000,
+        "months": 3,
+        "paid_installments": 0,
+        "fee_rate": 0.12
+      },
+      "out": [
+        11983333,
+        11983333,
+        11983334
+      ]
+    },
+    {
+      "id": "U14",
+      "fn": "dsr_mortgage_review",
+      "in": {
+        "household_income": 140000000,
+        "mortgage": 574000000,
+        "rate": 0.0493,
+        "stress": 0.024,
+        "years": 30,
+        "method": "원리금균등",
+        "other_annual": 0
+      },
+      "out": 0.3383045422410436,
+      "tolerance": 0.0005
+    },
+    {
+      "id": "U15",
+      "fn": "credit_full_limit",
+      "in": {
+        "borrower_gross": 80000000,
+        "existing_credit": 0
+      },
+      "out": {
+        "limit": 80000000,
+        "borrower_dsr_lump_sum_4_68": 0.2468
+      }
+    },
+    {
+      "id": "U16",
+      "fn": "family_loan_interest_free_max",
+      "in": {
+        "adequate_rate": 0.046,
+        "threshold": 10000000
+      },
+      "out": 217391304
+    }
+  ]
+}

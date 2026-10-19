@@ -1,0 +1,15 @@
+meta:
+  source: "부동산 거래신고 등에 관한 법률, 2025-10-15 대책(서울 전역 토지거래허가구역), 실거주 유예 연장 발표(2026-09)"
+  checked_at: "2026-09-28"
+  status: "공식 기준 확인 필요"
+seoul_whole_city: true
+move_in_within_months_after_permit: 4
+closing_plan_within_months_after_permit: 4  # D-041 사용자 자금계획의 잔금 일정 점검
+residence_years: 2
+permit_processing_days_max: 15
+tenant_occupied_deferral:
+  eligible: "2026-05-12 이후 계속 무주택인 실수요자가 세입자 있는 주택 매수"
+  apply_until: "2027-12-31"
+  move_in: "임대차 종료 후(갱신계약 포함)"
+mortgage_move_in_months: 6   # 규제지역 주담대 전입 의무(유예 시 임대차 종료 1개월 후와 비교)
+penalty: "이행강제금 매년 취득가의 최대 10%, 허가 취소 시 계약 무효"

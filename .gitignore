@@ -1,0 +1,42 @@
+# 실제 가구 데이터·엑셀 원본은 절대 커밋하지 않음
+data/household.local.json
+data/*.local.*
+*.xlsx
+*.xls
+
+# Python
+.venv/
+__pycache__/
+*.pyc
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+dist/
+build/
+
+# Web
+node_modules/
+web/dist/
+
+# 기타
+.env
+*.sqlite
+*.db
+.DS_Store
+
+# 실제 입력 백업·임시 출력
+data/backups/
+*.bak
+*.local.*
+*.egg-info/
+
+.hypothesis/
+
+*.sqlite-wal
+*.sqlite-shm
+
+# 기존 개인 가구 분석·대조 자료는 로컬에만 유지
+HANDOFF_CODEX.md
+VALIDATION.md
+tests/golden/scenarios.json
+tests/golden/units.json

@@ -1,0 +1,28 @@
+meta:
+  source: "소득세법 제48조·제55조, 시행령 제105조"
+  checked_at: "2026-10-06"
+  status: "공식 기준 확인 필요"
+service_years_rounding: "1년 미만은 1년으로 올림"
+service_years_deduction:   # years 이하 구간
+  - {upto: 5,  base: 0,        per_year: 1000000, from: 0}
+  - {upto: 10, base: 5000000,  per_year: 2000000, from: 5}
+  - {upto: 20, base: 15000000, per_year: 2500000, from: 10}
+  - {upto: 999, base: 40000000, per_year: 3000000, from: 20}
+converted_pay: "(퇴직급여 - 근속연수공제) × 12 / 근속연수"
+converted_pay_deduction:
+  - {upto: 8000000,   base: 0,         rate: 1.00, from: 0}
+  - {upto: 70000000,  base: 8000000,   rate: 0.60, from: 8000000}
+  - {upto: 100000000, base: 45200000,  rate: 0.55, from: 70000000}
+  - {upto: 300000000, base: 61700000,  rate: 0.45, from: 100000000}
+  - {upto: 9999999999, base: 151700000, rate: 0.35, from: 300000000}
+income_tax_brackets:   # 과세표준 이하: 세율, 누진공제
+  - {upto: 14000000,  rate: 0.06, deduction: 0}
+  - {upto: 50000000,  rate: 0.15, deduction: 1260000}
+  - {upto: 88000000,  rate: 0.24, deduction: 5760000}
+  - {upto: 150000000, rate: 0.35, deduction: 15440000}
+  - {upto: 300000000, rate: 0.38, deduction: 19940000}
+  - {upto: 500000000, rate: 0.40, deduction: 25940000}
+  - {upto: 1000000000, rate: 0.42, deduction: 35940000}
+  - {upto: 99999999999, rate: 0.45, deduction: 65940000}
+tax: "환산산출세액 × 근속연수 / 12, 원 미만 절사"
+local_income_tax_ratio: 0.10
