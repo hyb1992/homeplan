@@ -48,6 +48,7 @@ def main() -> None:
             page.locator("#upgrade-living").fill("200만원")
             page.get_by_role("button", name="다음", exact=True).click()
             page.locator("#upgrade-price").fill("5억원")
+            page.get_by_role("button", name="다음", exact=True).click()
             page.get_by_role("button", name="새 계획 저장", exact=True).click()
             expect(page.locator("#upgrade-new")).not_to_be_visible(timeout=30000)
             request = """async ({path,body,method})=>{

@@ -24,6 +24,8 @@ def calculate_costs(
         h.day("closing_date"),
         s.manual_tax_rate,
     )
+    if listing.acquisition_tax_amount is not None:
+        taxes = {"total": listing.acquisition_tax_amount, "manual_total": True, "calculated": taxes}
     brokerage = brokerage_fee(rules, listing.price, s.brokerage_rate, listing.brokerage_amount)
     registration = registration_costs(rules, listing.price, loans["mortgage"], **s.model_dump())
     move = (

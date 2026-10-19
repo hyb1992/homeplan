@@ -54,23 +54,38 @@ export function createUpgradeTools(c){
   }
   async function newPlan(){
     const blueprint=await api('/api/new-plan');templateCache=blueprint;
-    let step=0;const candidate=clone(blueprint.household),values={label:'우리의 새 계획',people:'두 사람',cash:0,living:0,lease:0,debt:0,husband:0,wife:0};
+    let step=0,costPreview=null;const candidate=clone(blueprint.household),values={label:'우리의 새 계획',people:'두 사람',cash:0,living:0,lease:0,debt:0,husband:0,wife:0};
+    const readCosts=()=>{
+      for(const key of ['lawyer_fee','registry_fee','appliances','moving','cleaning','temp_housing'])candidate.settings[key]=money(key);
+      candidate.listings[0].repair=money('repair');
+      candidate.listings[0].acquisition_tax_amount=readMoneyInput($('#upgrade-tax'));
+      candidate.listings[0].brokerage_amount=readMoneyInput($('#upgrade-broker'));
+    };
     const draw=()=>{
-      const rows=step===0?`${formField('label','계획 이름',values.label)}<div class="field"><label for="upgrade-people">소득을 함께 계획할 사람</label><select id="upgrade-people"><option ${values.people==='두 사람'?'selected':''}>두 사람</option><option ${values.people==='혼자'?'selected':''}>혼자</option></select></div><p class="hint">계산은 매일 오늘부터 시작합니다. 보유 현금은 오늘의 실제 잔액을 입력하세요.</p>`:step===1?`${formField('cash','현재 보유 현금',values.cash,'money')}${formField('husband',values.people==='혼자'?'내 월 실수령':'첫 번째 사람 월 실수령',values.husband,'money')}${values.people==='혼자'?'':formField('wife','두 번째 사람 월 실수령',values.wife,'money')}${formField('living','매달 생활비',values.living,'money')}${formField('lease','돌려받을 전세보증금',values.lease,'money')}${formField('debt','갚아야 할 전세대출',values.debt,'money')}`:`${formField('price','검토할 집 가격',candidate.listings[0].price,'money')}${formField('area','전용면적 · ㎡',candidate.listings[0].area_m2,'number')}${formField('contract','계약일',candidate.settings.contract_date,'date')}${formField('closing','잔금일',candidate.settings.closing_date,'date')}${formField('move','입주일',candidate.settings.move_in_date,'date')}<p class="hint">대출·중도금·휴직·수리비는 만든 계획에서 추가합니다. 토지거래허가 대상 여부와 세금 감면 등도 상세 설정에서 확인하세요.</p>`;
-      openModal(`새 계획 만들기 · ${step+1}/3`,`<form id="upgrade-new"><div class="fields">${rows}</div><div id="upgrade-error" class="modal-error" role="alert"></div><div class="modal-actions">${step?'<button type="button" class="button" id="upgrade-back">이전</button>':''}<button type="submit" class="button primary">${step===2?'새 계획 저장':'다음'}</button></div></form>`);
-      $('#upgrade-back')?.addEventListener('click',()=>{step--;draw();});
+      let rows;
+      if(step===0)rows=`${formField('label','계획 이름',values.label)}<div class="field"><label for="upgrade-people">소득을 함께 계획할 사람</label><select id="upgrade-people"><option ${values.people==='두 사람'?'selected':''}>두 사람</option><option ${values.people==='혼자'?'selected':''}>혼자</option></select></div><p class="hint">계산은 매일 오늘부터 시작합니다. 보유 현금은 오늘의 실제 잔액을 입력하세요.</p>`;
+      else if(step===1)rows=`${formField('cash','현재 보유 현금',values.cash,'money')}${formField('husband',values.people==='혼자'?'내 월 실수령':'첫 번째 사람 월 실수령',values.husband,'money')}${values.people==='혼자'?'':formField('wife','두 번째 사람 월 실수령',values.wife,'money')}${formField('living','매달 생활비',values.living,'money')}${formField('lease','돌려받을 전세보증금',values.lease,'money')}${formField('debt','갚아야 할 전세대출',values.debt,'money')}`;
+      else if(step===2)rows=`${formField('price','검토할 집 가격',candidate.listings[0].price,'money')}${formField('area','전용면적 · ㎡',candidate.listings[0].area_m2,'number')}${formField('contract','계약일',candidate.settings.contract_date,'date')}${formField('closing','잔금일',candidate.settings.closing_date,'date')}${formField('move','입주일',candidate.settings.move_in_date,'date')}<p class="hint">다음 단계에서 세금·법무·입주 비용을 검토합니다. 대출·중도금·휴직은 계획을 만든 뒤 설정할 수 있습니다.</p>`;
+      else rows=`<p class="hint wide">취득세 등 예상 합계 ${shortMoney(costPreview?.costs.acquisition_taxes_total||0)} · 중개보수 ${shortMoney(costPreview?.costs.brokerage||0)}. 매수가와 등록된 계산 기준에 따른 예상값입니다.</p>${formField('tax','취득세 등 최종 총액 · 빈칸은 자동',candidate.listings[0].acquisition_tax_amount??'','money')}${formField('broker','협의한 중개보수 · 빈칸은 자동',candidate.listings[0].brokerage_amount??'','money')}${formField('lawyer_fee','법무사 보수',candidate.settings.lawyer_fee,'money')}${formField('registry_fee','등기 비용',candidate.settings.registry_fee,'money')}${formField('repair','수리비',candidate.listings[0].repair??candidate.settings.repair_default,'money')}${formField('appliances','가전·가구',candidate.settings.appliances,'money')}${formField('moving','이사비',candidate.settings.moving,'money')}${formField('cleaning','입주 청소비',candidate.settings.cleaning,'money')}${formField('temp_housing','임시 거주비',candidate.settings.temp_housing,'money')}<p class="hint wide">직접 세금은 교육세·농특세·감면까지 반영한 최종 합계입니다. 법무사 견적에 포함된 세금·등기 비용을 다시 합산하지 마세요. 저장 후 매수 비용 화면에서 상세 내역과 납부 방식을 조정할 수 있어요.</p><p class="hint wide">최근 미리보기 · 집값 외 비용 ${shortMoney((costPreview?.costs.closing_costs_total||0)+(costPreview?.costs.move_in_costs||0))}</p><button type="button" class="button" id="upgrade-cost-preview">비용 미리보기</button>`;
+      openModal(`새 계획 만들기 · ${step+1}/4`,`<form id="upgrade-new"><div class="fields">${rows}</div><div id="upgrade-error" class="modal-error" role="alert"></div><div class="modal-actions">${step?'<button type="button" class="button" id="upgrade-back">이전</button>':''}<button type="submit" class="button primary">${step===3?'새 계획 저장':'다음'}</button></div></form>`);
+      $('#upgrade-back')?.addEventListener('click',()=>{try{if(step===3)readCosts();step--;draw();}catch(error){modalError(error);}});
+      $('#upgrade-cost-preview')?.addEventListener('click',async()=>{try{readCosts();costPreview=await candidateResult(candidate);draw();}catch(error){modalError(error);}});
       $('#upgrade-new').onsubmit=async e=>{e.preventDefault();try{
         if(step===0){values.label=value('label').trim();values.people=value('people');if(!values.label)throw new Error('계획 이름을 입력하세요.');step++;draw();return;}
         if(step===1){for(const key of ['cash','husband','living','lease','debt'])values[key]=money(key);values.wife=values.people==='혼자'?0:money('wife');step++;draw();return;}
-        candidate.settings.husband_net_pay=values.husband;candidate.settings.wife_net_pay=values.wife;
-        candidate.settings.contract_date=value('contract');candidate.settings.closing_date=value('closing');candidate.settings.move_in_date=value('move');candidate.settings.interim_date=null;
-        candidate.listings[0].price=money('price');candidate.listings[0].area_m2=Number(value('area'));
-        if(candidate.listings[0].price<=0)throw new Error('집 가격을 0원보다 크게 입력하세요.');
-        candidate.fund_events=[{id:'CASH',name:'현재 보유 현금',type:'현금·예금',value:values.cash,status:'확정'}];
-        if(values.lease)candidate.fund_events.push({id:'LEASE',name:'전세보증금 반환',type:'전세보증금',value:values.lease,available_date:'퇴거일',status:'미확정'});
-        if(values.debt)candidate.fund_events.push({id:'DEBT',name:'전세대출 상환',type:'기존 전세대출(부채)',value:values.debt,available_date:'전세대출상환일',status:'확인 완료'});
-        candidate.expense_items=[{id:'E01',name:'생활비',category:'생활비',amount:values.living,start_date:'기준일'}];
-        const saved=await post('/api/workspaces',{label:values.label,household:candidate});closeModal();await refreshWorkspaces();await switchWorkspace(saved.id);toast('새 계획을 만들었습니다. 대출·상세 설정을 확인하세요.');
+        if(step===2){
+          candidate.settings.husband_net_pay=values.husband;candidate.settings.wife_net_pay=values.wife;
+          candidate.settings.contract_date=value('contract');candidate.settings.closing_date=value('closing');candidate.settings.move_in_date=value('move');candidate.settings.interim_date=null;
+          candidate.listings[0].price=money('price');candidate.listings[0].area_m2=Number(value('area'));
+          if(candidate.listings[0].price<=0)throw new Error('집 가격을 0원보다 크게 입력하세요.');
+          candidate.fund_events=[{id:'CASH',name:'현재 보유 현금',type:'현금·예금',value:values.cash,status:'확정'}];
+          if(values.lease)candidate.fund_events.push({id:'LEASE',name:'전세보증금 반환',type:'전세보증금',value:values.lease,available_date:'퇴거일',status:'미확정'});
+          if(values.debt)candidate.fund_events.push({id:'DEBT',name:'전세대출 상환',type:'기존 전세대출(부채)',value:values.debt,available_date:'전세대출상환일',status:'확인 완료'});
+          candidate.expense_items=[{id:'E01',name:'생활비',category:'생활비',amount:values.living,start_date:'기준일'}];
+          costPreview=await candidateResult(candidate);step++;draw();return;
+        }
+        readCosts();await candidateResult(candidate);
+        const saved=await post('/api/workspaces',{label:values.label,household:candidate});closeModal();state.route='costs';location.hash='costs';await refreshWorkspaces();await switchWorkspace(saved.id);toast('새 계획을 만들었습니다. 매수 비용과 납부 방식을 확인하세요.');
       }catch(error){modalError(error);}};
     };draw();
   }

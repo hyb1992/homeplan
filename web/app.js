@@ -2,6 +2,7 @@ import {moneyControl, dateControl, readMoneyInput, normalizeMoneyInput, installI
 import {seedExpenseItems} from './expense-plan.mjs';
 import {createUpgradeTools} from './workspace-tools.mjs';
 import {installUpdateNotice} from './update-notice.mjs';
+import {renderPurchaseCosts} from './purchase-costs.mjs';
 
 const $ = (selector, root = document) => root.querySelector(selector);
 const $$ = (selector, root = document) => [...root.querySelectorAll(selector)];
@@ -18,6 +19,7 @@ const shortMoney = value => {
 };
 const icons = {
   plan:'M3 10 12 3l9 7M5 9v12h14V9M9 21v-8h6v8',
+  costs:'M4 3h16v18H4zM8 8h8M8 12h8M8 16h5',
   funds:'M3 7h18v14H3zM3 7l3-4h12l3 4M15 13h6v4h-6z',
   support:'M12 21s-9-5-9-12a5 5 0 0 1 9-3 5 5 0 0 1 9 3c0 7-9 12-9 12z',
   settings:'M4 20V10M12 20V4M20 20v-7M1 10h6M9 4h6M17 13h6',
@@ -25,6 +27,7 @@ const icons = {
 };
 const pages = {
   plan:['매수계획','매수 계획을 한눈에','매물과 일정을 바꾸며 우리 가족의 자금을 확인하세요.'],
+  costs:['매수 비용','집값 외에 드는 돈을 먼저','취득세부터 법무사·수리·이사 비용까지, 항목별로 정하세요.'],
   funds:['우리 자금','우리의 자금을 모아보기','예금부터 앞으로 들어올 돈까지, 항목을 자유롭게 추가하세요.'],
   support:['부모님 지원','도움을 받는 일정도 함께','증여와 차입을 구분하고, 실제 입금일을 기준으로 계획하세요.'],
   settings:['대출·가계','매달의 여유까지 살펴보기','대출 조건과 소득·지출을 바꿔 우리 가족에게 맞는 기준을 정하세요.'],
@@ -89,6 +92,7 @@ function field(key,label,kind='money',scope='settings',wide=false,help='') {
   let value = source[key] ?? '';
   if(key==='management_start_date'&&!value)value='입주일';
   if(scope==='listing'&&key==='mgmt_fee'&&source[key]==null)value=state.draft.settings.mgmt_fee_default??'';
+  if(scope==='listing'&&key==='repair'&&source[key]==null)value=state.draft.settings.repair_default??0;
   if (kind === 'percent') value = value === '' ? '' : Number((Number(value)*100).toFixed(6));
   const attributes=`data-key="${key}" data-kind="${kind}" data-scope="${scope}"`,id=`field-${key}`;
   const date=kind==='date'||key.endsWith('_date');
@@ -273,6 +277,7 @@ function renderTaxCardPlan(){
   const s=state.draft.settings;
   return `<section class="card form-section" id="tax-card-plan"><h2>취득세 카드 납부</h2>${checkField('card_pay_tax','취득세를 카드로 납부해요')}${s.card_pay_tax?`${checkField('card_repay_on_credit_draw','신용대출 실행일에 남은 카드 할부 완납')}<p class="hint">${s.card_repay_on_credit_draw?'신용대출 실행일에 남은 카드 원금이 한 번 출금되고 카드 빚은 0원이 됩니다. 이후 카드 할부는 청구하지 않아요. 신용대출 빚은 그대로 남습니다.':'아래 일정에 따라 카드 할부를 나누어 납부합니다.'} 신용대출 실행일은 위 대출 설정을 따릅니다.</p><div class="fields">${field('card_months','카드 할부 개월','int')}${field('card_first_offset','첫 납부 · 잔금월부터 몇 개월 후','int')}${field('card_paid_installments','유이자 회차 수','int')}${field('card_fee_rate','할부 연 수수료율 · %','percent')}</div><p class="hint">완납일 이전 회차만 기존 할부 금액·수수료로 계산하고, 완납일에는 남은 원금만 갚는 계획입니다. 신용대출을 끄거나 미확정 대출금을 제외해도 완납 지출은 유지됩니다.</p>`:'<p class="hint">취득세는 잔금일 현금 지출에 포함됩니다.</p>'}</section>`;
 }
+function renderCosts(){return renderPurchaseCosts({state,selected,field,checkField,taxCard:renderTaxCardPlan,esc,won,shortMoney});}
 function renderSettings() {
   const s=state.draft.settings, options=state.draft.bank_quotes.flatMap(q=>q.options.map(o=>({...o,bank:q.bank,date:q.date}))),chosen=s.mortgage_quote_option?.[s.mortgage_method]||'';
   return `<div id="calculation-state" class="recalculate-note" ${state.calculatedSnapshot===JSON.stringify(state.draft)?'hidden':''}>지출이나 소득이 바뀌었습니다. 다시 계산하면 새 조건으로 보여드려요.</div>${renderIncome()}${renderExpensePlan()}${renderAutomaticExpenses()}<section class="card form-section"><h2>주택담보대출</h2><div class="fields"><div class="field wide"><label for="bank-option">은행 상담 옵션</label><select id="bank-option"><option value="">직접 입력</option>${options.map(o=>`<option value="${esc(o.id)}" ${o.id===chosen?'selected':''}>${esc(o.bank)} · ${esc(o.method)} · ${(Number(o.rate)*100).toFixed(2)}% · 한도 ${shortMoney(o.limit)}</option>`).join('')}</select></div>${field('mortgage_desired','희망 대출금 · 원')}${field('bank_confirmed_limit','은행 확인 한도 · 원')}${field('mortgage_rate','실제 연 금리 · %','percent')}${selectField('mortgage_method','상환 방식',['원리금균등','원금균등'])}${field('mortgage_years','상환기간 · 년','int')}${field('monthly_repay_limit','월 주담대 상환 한도 · 원')}${field('ltv','LTV · %','percent')}${field('stress_rate','심사 스트레스 가산 · %p','percent')}${selectField('loan_status','대출 확인 상태',['미확정','은행 상담 완료','승인 완료'])}</div><p class="hint">금리 또는 은행 한도를 직접 수정하면 직접 입력 모드로 전환합니다. 상담 조건과 실제 심사 조건은 다시 확인하세요.</p></section><section class="card form-section"><h2>신용대출과 청약담보대출</h2>${checkField('credit_use','신용대출을 계획에 포함')}<div class="fields">${field('credit_amount','신용대출 · 원 (0이면 자동)')}${field('credit_rate','신용대출 연 금리 · %','percent')}${field('credit_draw_date','실행일 · 날짜 또는 잔금일+1','text')}${selectField('credit_borrower','신용대출 차주',['남편','아내'])}${selectField('credit_status','신용대출 확인 상태',['미확정','확인 완료'])}${selectField('credit_method','상환 방식',['만기일시','5년 분할'])}</div>${checkField('sub_loan_use','청약통장 담보대출을 계획에 포함')}<div class="fields">${field('sub_amount','청약담보대출 · 원 (0이면 자동)')}${field('sub_draw_date','실행일 · 날짜 또는 잔금일+1','text')}${selectField('sub_status','청약담보 확인 상태',['미확정','확인 완료'])}</div></section>${renderTaxCardPlan()}<div class="page-actions"><button class="button soft" id="settings-evaluate">변경한 조건으로 계산</button><button class="button primary" data-action="save">변경사항 저장</button></div>`;
@@ -310,12 +315,19 @@ function render() {
   $('#navigation').innerHTML=Object.entries(pages).map(([key,[name]])=>`<a href="#${key}" class="nav-item ${state.route===key?'active':''}" aria-current="${state.route===key?'page':'false'}"><svg viewBox="0 0 24 24"><path d="${icons[key]}" stroke-linecap="round" stroke-linejoin="round"/></svg><span>${name}</span></a>`).join('');
   $('#breadcrumb-title').textContent=label;$('#page-title').textContent=title;$('#page-description').textContent=description;
   $('#workspace-switch').innerHTML=state.workspaces.map(w=>`<button data-workspace="${esc(w.id)}" class="${w.id===state.workspace?'active':''}" aria-pressed="${w.id===state.workspace}">${esc(w.label)}</button>`).join('');
-  $('#content').innerHTML=`<nav class="mobile-nav">${Object.entries(pages).map(([key,[name]])=>`<a href="#${key}" class="${state.route===key?'active':''}">${name}</a>`).join('')}</nav>${state.workspace==='demo'?'<div class="demo-banner">가상 테스트 중입니다. 이 화면에서 저장해도 실제 가구 데이터는 바뀌지 않아요.</div>':''}`+({plan:renderPlan,funds:renderFunds,support:renderSupport,settings:renderSettings,ledger:renderLedger}[state.route])();
+  $('#content').innerHTML=`<nav class="mobile-nav">${Object.entries(pages).map(([key,[name]])=>`<a href="#${key}" class="${state.route===key?'active':''}">${name}</a>`).join('')}</nav>${state.workspace==='demo'?'<div class="demo-banner">가상 테스트 중입니다. 이 화면에서 저장해도 실제 가구 데이터는 바뀌지 않아요.</div>':''}`+({plan:renderPlan,costs:renderCosts,funds:renderFunds,support:renderSupport,settings:renderSettings,ledger:renderLedger}[state.route])();
   updateSavedState();
   if(state.route==='plan'){syncRefundLink();$('#refund-interim-link').onclick=toggleRefundLink;}
   bindDateCash();
   $('#variable-asset-mode')?.addEventListener('change',event=>{state.draft.settings.variable_asset_mode=event.target.value;state.max=null;render();calculate();});
   if(state.route==='plan'){drawChart();$('#calculate-button').onclick=calculate;$('#maximum-button').onclick=calculateMaximum;$('#chart-range').onchange=e=>{state.chartRange=e.target.value;drawChart();};$('#confirmed-only').onchange=e=>{state.confirmed=e.target.checked;calculate();};$('#show-checks')?.addEventListener('click',()=>{state.showAll=!state.showAll;render();});$('#listing-select').onchange=e=>{state.draft.selected_listing=e.target.value;state.max=null;render();calculate();};}
+  if(state.route==='costs'){
+    $('#costs-calculate').onclick=()=>calculate();$('#costs-save').onclick=saveDraft;
+    $('#cost-listing-select').onchange=e=>{state.draft.selected_listing=e.target.value;state.max=null;render();calculate();};
+    for(const [id,key,amount] of [['cost-tax-mode','acquisition_tax_amount',state.result?.costs.acquisition_taxes_total],['cost-broker-mode','brokerage_amount',state.result?.costs.brokerage]]){
+      $('#'+id).onchange=e=>{if(e.target.value==='auto'){selected()[key]=null;inputProblems.delete(`listing:${selected().id}:${key}`);state.max=null;render();calculate();return;}if(!validInputs()){e.target.value=selected()[key]==null?'auto':'manual';return;}selected()[key]=e.target.value==='manual'?(amount||0):null;inputProblems.delete(`listing:${selected().id}:${key}`);state.max=null;render();calculate();};
+    }
+  }
   if(state.route==='settings'){$('#settings-evaluate').onclick=()=>calculate(true);$('#bank-option').onchange=e=>{const option=state.draft.bank_quotes.flatMap(q=>q.options).find(o=>o.id===e.target.value),s=state.draft.settings;if(option){s.mortgage_method=option.method;s.mortgage_rate=option.rate;s.bank_confirmed_limit=option.limit;s.mortgage_quote_option={...s.mortgage_quote_option,[option.method]:option.id};}else{s.mortgage_quote_option={};}render();};}
   if(state.route==='settings')$('#expense-month').onchange=event=>{state.expenseMonth=event.target.value;$('#expense-summary').innerHTML=expenseSummaryBody();};
   if(state.route==='ledger'&&state.result){renderLedgerTable();$('#ledger-mode').onchange=renderLedgerTable;$('#ledger-search').oninput=renderLedgerTable;}

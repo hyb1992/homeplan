@@ -37,6 +37,7 @@ def max_price(
         )
         item.appraisal = None
         item.brokerage_amount = None
+        item.acquisition_tax_amount = None
     initial = evaluate(
         h, item, rules, analyze_assumptions=False, confirmed_only=confirmed_only, as_of=as_of
     )

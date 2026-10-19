@@ -243,6 +243,7 @@ class Listing(InputModel):
     move_in_available: DateInput = None
     tenant: str = "집주인 거주"
     brokerage_amount: Money | None = None
+    acquisition_tax_amount: Money | None = None
 
 
 class BankOption(InputModel):

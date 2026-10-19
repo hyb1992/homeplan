@@ -132,14 +132,60 @@ def main() -> None:
                 page.locator("#upgrade-living").fill("200만원")
                 page.get_by_role("button", name="다음", exact=True).click()
                 page.locator("#upgrade-price").fill("5억원")
+                page.get_by_role("button", name="다음", exact=True).click()
+                page.locator("#upgrade-tax").fill("123만원")
+                page.locator("#upgrade-lawyer_fee").fill("120만원")
+                page.locator("#upgrade-cost-preview").click()
+                expect(page.locator("#upgrade-lawyer_fee")).to_be_visible()
                 page.get_by_role("button", name="새 계획 저장", exact=True).click()
                 expect(page.locator("#upgrade-new")).not_to_be_visible()
+                expect(page.locator("#cost-tax-mode")).to_have_value("manual")
+                created = next(
+                    row
+                    for row in httpx.get(base + "/api/workspaces").json()
+                    if row["label"] == "처음 만든 계획"
+                )
+                new_plan = httpx.get(base + f"/api/workspaces/{created['id']}").json()
+                assert new_plan["household"]["listings"][0]["acquisition_tax_amount"] == 1230000
+                assert new_plan["household"]["settings"]["lawyer_fee"] == 1200000
+                page.locator("#cost-tax-mode").select_option("auto")
+                expect(page.locator("#field-acquisition_tax_amount")).not_to_be_visible()
+                page.locator("#cost-tax-mode").select_option("manual")
+                page.locator("#field-acquisition_tax_amount").fill("0")
+                page.locator("#field-acquisition_tax_amount").press("Tab")
+                page.locator("#field-lawyer_fee").fill("210만원")
+                page.locator("#field-lawyer_fee").press("Tab")
+                with page.expect_response(
+                    lambda r: (
+                        r.url.endswith("/api/evaluate")
+                        and r.request.method == "POST"
+                        and r.request.post_data_json["household"]["listings"][0].get(
+                            "acquisition_tax_amount"
+                        )
+                        == 0
+                        and r.request.post_data_json["household"]["settings"]["lawyer_fee"]
+                        == 2100000
+                    )
+                ) as cost_response:
+                    page.locator("#costs-calculate").click()
+                costs = cost_response.value.json()["costs"]
+                assert (
+                    costs["acquisition_taxes_total"] == 0
+                    and costs["registration"]["lawyer"] == 2100000
+                )
+                page.locator("#costs-save").click()
+                page.get_by_role("button", name="확인하고 저장", exact=True).click()
+                expect(page.locator("#save-button")).to_be_disabled()
+                updated = httpx.get(base + f"/api/workspaces/{created['id']}").json()
+                assert updated["household"]["listings"][0]["acquisition_tax_amount"] == 0
+                assert updated["household"]["settings"]["lawyer_fee"] == 2100000
+                page.screenshot(path=str(ROOT / "data/purchase-costs.local.png"), full_page=True)
                 # Desktop and mobile result explanations.
                 page.locator('a[href="#plan"]:visible').first.click()
                 page.locator('[data-action="inspect-minimum"]').click()
                 expect(page.locator(".cash-details")).to_be_visible()
                 page.set_viewport_size({"width": 390, "height": 844})
-                for route in ("plan", "funds", "support", "settings", "ledger"):
+                for route in ("plan", "costs", "funds", "support", "settings", "ledger"):
                     page.locator(f'a[href="#{route}"]:visible').first.click()
                     assert page.evaluate("()=>document.documentElement.scrollWidth<=innerWidth")
                 page.set_viewport_size({"width": 1440, "height": 1000})
