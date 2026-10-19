@@ -48,3 +48,6 @@
 #upgrade-advanced .fields{max-height:58vh;overflow:auto;padding:8px}#upgrade-advanced .checkbox-line{align-self:center}
 #workspace-switch{max-width:45vw;overflow:auto}.upgrade-toolbar .button{white-space:nowrap}
 @media(max-width:600px){.upgrade-toolbar{gap:6px;margin:0 0 16px}.upgrade-toolbar .button{font-size:11px;padding:8px}.runtime-summary{gap:12px;padding:12px}.runtime-summary>div{flex-basis:100%}#workspace-switch{max-width:58vw}.settings-group>summary{padding:15px}.settings-group>.card{padding:14px}}
+:root .update-notice{display:flex;align-items:center;justify-content:flex-end;flex-wrap:wrap;gap:8px;margin:0 0 16px;font-size:12px;color:var(--muted,#6b8077)}
+:root .update-notice [hidden]{display:none}
+.cost-stats{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px;margin-top:20px}.cost-stats .stat-card{padding:18px;background:#f3f7ee;border:1px solid var(--line);border-radius:12px}.cost-stats .stat-card span,.cost-stats .stat-card small{display:block;color:var(--muted);font-size:12px}.cost-stats .stat-card strong{display:block;font-size:24px;margin:10px 0}.bottom-actions{display:flex;gap:10px;justify-content:flex-end}.form-section details{margin-top:18px}.form-section details summary{cursor:pointer;color:var(--green)}@media(max-width:650px){.cost-stats{grid-template-columns:1fr}.bottom-actions{flex-wrap:wrap}}

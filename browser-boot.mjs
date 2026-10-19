@@ -7,7 +7,7 @@ document.querySelector('main').prepend(notice);
 document.querySelector('.local-status').textContent='이 브라우저에 저장';
 globalThis.HOMEPLAN_BROWSER=true;
 window.homeplanStartup?.wait(180000);
-const worker=new Worker(new URL('./browser-worker.js?v=826b254e2d8a21da',import.meta.url));
+const worker=new Worker(new URL('./browser-worker.js?v=370a8c05cffa45b2',import.meta.url));
 const pending=new Map();let sequence=0;
 const request=payload=>new Promise((resolve,reject)=>{const id=++sequence;const timer=setTimeout(()=>{pending.delete(id);reject(new Error('처리 시간이 초과되었습니다. 연결을 확인하고 다시 열어주세요.'));},payload.init?180000:120000);pending.set(id,{resolve,reject,timer});worker.postMessage({id,...payload});});
 worker.onmessage=({data})=>{
@@ -26,7 +26,7 @@ try{
     const result=await locked(()=>request({path:url.pathname+url.search,method:options.method||'GET',body:options.body||''}));
     return new Response(result.body,{status:result.status,headers:result.headers});
   };
-  await import('./app.js?v=826b254e2d8a21da');
+  await import('./app.js?v=370a8c05cffa45b2');
   navigator.storage?.persist?.().catch(()=>{});
   let current;try{current=await(await realFetch(new URL('./build.json',import.meta.url),{cache:'no-store',signal:AbortSignal.timeout(4000)})).json();}catch{}
   setInterval(async()=>{
