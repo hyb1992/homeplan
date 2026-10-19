@@ -51,3 +51,10 @@ console.log('Expense preview preserves amounts, separates current housing, and h
 
 assert.match(moneyControl('zero-credit','신용대출',0),/data-money-unit="10000"/);
 assert.equal(parseMoney('8300',10000),83000000);
+import {releaseStatus} from '../../web/update-notice.mjs';
+const updateRelease={tag_name:'v0.4.2',target_commitish:'a'.repeat(40),assets:[{name:'HomePlan-Windows-x64.zip',browser_download_url:'https://github.com/hyb1992/homeplan/releases/download/v0.4.2/HomePlan-Windows-x64.zip'}]};
+if(!releaseStatus(updateRelease,'0.4.1').available)throw new Error('new release was not detected');
+if(releaseStatus(updateRelease,'0.4.10').available)throw new Error('older release detected as new');
+if(releaseStatus({...updateRelease,prerelease:true},'0.4.1').available)throw new Error('prerelease offered');
+if(releaseStatus({...updateRelease,assets:[{name:'HomePlan-Windows-x64.zip',browser_download_url:'https://evil.invalid/test.zip'}]},'0.4.1').available)throw new Error('foreign download offered');
+if(releaseStatus(updateRelease,'0.4.2','a'.repeat(40)).available)throw new Error('current build offered');

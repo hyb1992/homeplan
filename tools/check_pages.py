@@ -79,6 +79,39 @@ def main() -> None:
                 api(f"/api/workspaces/{key}")["data"]["household"]["settings"]["husband_net_pay"]
                 == 4100000
             )
+            before_download = api(f"/api/workspaces/{key}")["data"]
+            page.unroute("**/build.json")
+            asset = "https://github.com/hyb1992/homeplan/releases/download/test/HomePlan-Windows-x64.zip"
+            release = {
+                "tag_name": "v9.0.0",
+                "assets": [{"name": "HomePlan-Windows-x64.zip", "browser_download_url": asset}],
+            }
+            page.route(
+                "https://api.github.com/repos/hyb1992/homeplan/releases/latest",
+                lambda route: route.fulfill(json=release),
+            )
+            page.locator("#update-check").click()
+            expect(page.locator("#update-download")).to_be_visible(timeout=15000)
+            assert not any(url == asset for url, _ in sent)
+            context.route(
+                asset,
+                lambda route: route.fulfill(
+                    body=b"synthetic-download",
+                    content_type="application/zip",
+                    headers={"Content-Disposition": 'attachment; filename="test.zip"'},
+                ),
+            )
+            with page.expect_download() as manual_download:
+                page.locator("#update-download").click()
+            assert Path(manual_download.value.path()).read_bytes() == b"synthetic-download"
+            assert api(f"/api/workspaces/{key}")["data"] == before_download
+            page.unroute("https://api.github.com/repos/hyb1992/homeplan/releases/latest")
+            page.route(
+                "https://api.github.com/repos/hyb1992/homeplan/releases/latest",
+                lambda route: route.abort(),
+            )
+            page.locator("#update-check").click()
+            expect(page.locator("#update-state")).to_contain_text("건너뛰", timeout=15000)
             assert not errors, errors
             assert not any("/api/" in path for path in requests), requests
             assert not any(body for _, body in sent), sent

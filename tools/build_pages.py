@@ -49,7 +49,17 @@ def main() -> None:
     (output / "index.html").write_text(index, "utf-8")
     (output / ".nojekyll").touch()
     (output / "build.json").write_text(
-        json.dumps({"revision": revision, "engine": fingerprint}), "utf-8"
+        json.dumps(
+            {
+                "revision": revision,
+                "engine": fingerprint,
+                "build": subprocess.check_output(
+                    ["git", "rev-parse", "HEAD"], cwd=ROOT, text=True
+                ).strip(),
+                "version": __import__("homeplan").__version__,
+            }
+        ),
+        "utf-8",
     )
     (ROOT / "data/pages-build.local.json").write_text(
         json.dumps({"directory": str(output)}), "utf-8"

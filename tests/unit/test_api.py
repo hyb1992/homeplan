@@ -43,6 +43,22 @@ def test_api_evaluation_and_ui_assets(api_context):
     assert client.get("/expense-plan.mjs").status_code == 200
 
 
+def test_release_detection_does_not_change_saved_plan_and_failure_is_optional(api_context):
+    client, repo = api_context
+    before = repo.get("demo")
+    history = repo.history("demo")
+    with patch(
+        "homeplan.server.fetch_release", return_value={"tag_name": "v9.0.0", "assets": []}
+    ) as check:
+        assert client.get("/api/updates").json()["release"]["tag_name"] == "v9.0.0"
+        assert client.get("/api/updates").status_code == 200
+        assert check.call_count == 1
+    with patch("homeplan.server.fetch_release", return_value=None):
+        assert client.get("/api/updates?force=true").json()["release"] is None
+    assert repo.get("demo") == before and repo.history("demo") == history
+    assert client.get("/api/workspaces").status_code == 200
+
+
 def test_expense_plan_preview_save_and_restore(api_context):
     client, repo = api_context
     loaded = repo.get("demo")

@@ -1,8 +1,6 @@
 name: Deploy web and Windows
 
 on:
-  push:
-    branches: [main]
   workflow_dispatch:
 
 permissions:
@@ -88,5 +86,5 @@ jobs:
           $build = Get-Content data/release-build.local.json | ConvertFrom-Json
           $version = uv run --group build python -c "import homeplan; print(homeplan.__version__)"
           $tag = "v$version-build.${{ github.run_number }}.${{ github.run_attempt }}"
-          gh release create $tag --target "$env:GITHUB_SHA" --title "HomePlan $version ($($env:GITHUB_SHA.Substring(0,7)))" --notes-file RELEASE_NOTES.md --latest "$($build.directory)/HomePlan-Windows-x64.zip" "$($build.directory)/release.json"
+          gh release create $tag --target "$env:GITHUB_SHA" --title "HomePlan $version ($($env:GITHUB_SHA.Substring(0,7)))" --notes-file RELEASE_NOTES.md --latest "$($build.directory)/HomePlan-Windows-x64.zip" "$($build.directory)/SHA256SUMS.txt"
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }

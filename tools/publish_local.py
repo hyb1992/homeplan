@@ -76,7 +76,7 @@ def main() -> None:
         )
         for name, content_type in [
             ("HomePlan-Windows-x64.zip", "application/zip"),
-            ("release.json", "application/json"),
+            ("SHA256SUMS.txt", "text/plain"),
         ]:
             url = release["upload_url"].split("{")[0] + "?name=" + urllib.parse.quote(name)
             request = urllib.request.Request(

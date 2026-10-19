@@ -1,52 +1,48 @@
 import hashlib
 import json
 import subprocess
-import zipfile
-from unittest.mock import patch
+from unittest.mock import MagicMock, patch
 
 import pytest
 
-from homeplan.updates import _managed_launch, prepare_update, release_url, stage_archive
+from homeplan.updates import ASSET, _managed_launch, fetch_release, release_url
 
 
-@pytest.mark.parametrize(
-    "name",
-    [
-        "../outside",
-        "HomePlan/../outside",
-        "HomePlan/data/keep.sqlite",
-        "HomePlan/C:/outside",
-        "HomePlan\\outside",
-    ],
-)
-def test_update_rejects_traversal_and_user_data(tmp_path, name):
-    archive = tmp_path / "update.zip"
-    with zipfile.ZipFile(archive, "w") as package:
-        package.writestr("HomePlan/HomePlan.exe", b"program")
-        member = zipfile.ZipInfo(name)
-        member.filename = name
-        package.writestr(member, b"bad")
-    with pytest.raises(ValueError):
-        stage_archive(
-            archive, tmp_path / "version", hashlib.sha256(archive.read_bytes()).hexdigest()
-        )
-    assert not (tmp_path / "version").exists()
+def test_detection_only_reads_one_metadata_response(tmp_path):
+    value = {
+        "tag_name": "v0.4.2",
+        "target_commitish": "a" * 40,
+        "assets": [
+            {
+                "name": ASSET,
+                "browser_download_url": "https://github.com/hyb1992/homeplan/releases/download/v0.4.2/"
+                + ASSET,
+            },
+            {"name": "release.json", "browser_download_url": "https://example.invalid/never-read"},
+        ],
+    }
+    stream = MagicMock()
+    stream.__enter__.return_value.read.return_value = json.dumps(value).encode()
+    with patch("homeplan.updates.urllib.request.urlopen", return_value=stream) as request:
+        release = fetch_release()
+    assert release["tag_name"] == "v0.4.2" and len(release["assets"]) == 1
+    assert request.call_count == 1
+    assert request.call_args.args[0].data is None
+    assert request.call_args.kwargs["timeout"] == 4
+    assert list(tmp_path.iterdir()) == []
 
 
-def test_update_checks_hash_and_keeps_existing_data(tmp_path):
-    archive = tmp_path / "update.zip"
-    with zipfile.ZipFile(archive, "w") as package:
-        package.writestr("HomePlan/HomePlan.exe", b"new-program")
-    keep = tmp_path / "data/keep.local.json"
-    keep.parent.mkdir()
-    keep.write_bytes(b"existing-user-data")
-    with pytest.raises(ValueError, match="무결성"):
-        stage_archive(archive, tmp_path / "versions/bad", "0" * 64)
-    exe = stage_archive(
-        archive, tmp_path / "versions/good", hashlib.sha256(archive.read_bytes()).hexdigest()
-    )
-    assert exe.read_bytes() == b"new-program"
-    assert keep.read_bytes() == b"existing-user-data"
+@pytest.mark.parametrize("error", [OSError("offline"), TimeoutError("blocked")])
+def test_failed_detection_is_skipped(error):
+    with patch("homeplan.updates.urllib.request.urlopen", side_effect=error):
+        assert fetch_release() is None
+
+
+def test_disabled_detection_does_not_contact_github(monkeypatch):
+    monkeypatch.setenv("HOMEPLAN_DISABLE_UPDATES", "1")
+    with patch("homeplan.updates.urllib.request.urlopen") as request:
+        assert fetch_release() is None
+    request.assert_not_called()
 
 
 @pytest.mark.parametrize(
@@ -57,69 +53,60 @@ def test_update_checks_hash_and_keeps_existing_data(tmp_path):
         "https://github.com/other/project/releases/download/a/b",
     ],
 )
-def test_update_source_is_fixed(url):
+def test_download_source_is_fixed(url):
     with pytest.raises(ValueError):
         release_url(url)
 
 
-@pytest.mark.parametrize("error", [OSError("offline"), TimeoutError("blocked")])
-def test_offline_update_still_launches_current_app(tmp_path, error):
+def test_launcher_never_checks_downloads_or_changes_user_data(tmp_path, household):
+    from homeplan.repository import Repository
+
+    repo = Repository(tmp_path / "data/homeplan.local.sqlite")
+    repo.seed("actual", "Synthetic plan", household.model_dump(mode="json"))
+    modified = repo.get("actual")["household"]
+    modified["settings"]["husband_net_pay"] = 4321000
+    original = repo.save("actual", modified, 0)
+    history = repo.history("actual")
+    digest = hashlib.sha256(repo.path.read_bytes()).hexdigest()
+    profile = tmp_path / "data/edge.local.profile/keep"
+    profile.parent.mkdir()
+    profile.write_bytes(b"existing-browser-profile")
     with (
         patch("homeplan.gui_launcher.health", return_value=None),
-        patch("homeplan.updates.prepare_update", side_effect=error),
+        patch("homeplan.updates.urllib.request.urlopen") as network,
         patch(
             "homeplan.updates.subprocess.run", return_value=subprocess.CompletedProcess([], 0)
         ) as run,
     ):
         _managed_launch(tmp_path)
+    network.assert_not_called()
     assert run.call_args.args[0] == [str(tmp_path / "HomePlan.exe")]
     assert run.call_args.kwargs["env"]["HOMEPLAN_DATA_ROOT"] == str(tmp_path.resolve())
-
-
-def test_successful_update_preserves_database_versions_and_profile(tmp_path, household):
-    from homeplan.repository import Repository
-
-    repo = Repository(tmp_path / "data/homeplan.local.sqlite")
-    repo.seed("actual", "Synthetic user's plan", household.model_dump(mode="json"))
-    modified = repo.get("actual")["household"]
-    modified["settings"]["husband_net_pay"] = 4321000
-    original = repo.save("actual", modified, 0)
-    history = repo.history("actual")
-    profile = tmp_path / "data/edge.local.profile/keep"
-    profile.parent.mkdir()
-    profile.write_bytes(b"existing-browser-profile")
-    state = {"build": "a" * 40, "published": "2026-10-19T00:00:00Z"}
-    with (
-        patch("homeplan.gui_launcher.health", return_value=None),
-        patch("homeplan.updates.prepare_update", return_value=(tmp_path / "new.exe", state)),
-        patch("homeplan.updates.subprocess.run", return_value=subprocess.CompletedProcess([], 0)),
-    ):
-        _managed_launch(tmp_path)
-    assert repo.get("actual") == original
-    assert repo.history("actual") == history
-    assert (
-        repo.version("actual", 0)["settings"]["husband_net_pay"]
-        == household.settings.husband_net_pay
-    )
+    assert hashlib.sha256(repo.path.read_bytes()).hexdigest() == digest
+    assert repo.get("actual") == original and repo.history("actual") == history
     assert profile.read_bytes() == b"existing-browser-profile"
-    backups = repo.backup_versions()
-    assert backups and repo.backup_household(backups[0]["name"], "actual") == original["household"]
+    assert not (tmp_path / "versions").exists()
 
 
-def test_failed_new_version_falls_back_and_does_not_commit_update_state(tmp_path):
-    candidate = tmp_path / "versions/new/HomePlan.exe"
+@pytest.mark.parametrize("version, expected", [("0.4.0", False), ("9.0.0", True)])
+def test_previously_installed_version_remains_compatible(tmp_path, version, expected):
+    app = tmp_path / "versions" / ("a" * 40) / "HomePlan"
+    info = app / "_internal/homeplan/build-info.json"
+    info.parent.mkdir(parents=True)
+    info.write_text(json.dumps({"version": version}))
+    (app / "HomePlan.exe").write_bytes(b"existing")
+    (tmp_path / "data").mkdir()
+    (tmp_path / "data/update-state.local.json").write_text(json.dumps({"build": "a" * 40}))
     with (
         patch("homeplan.gui_launcher.health", return_value=None),
-        patch("homeplan.updates.prepare_update", return_value=(candidate, {"build": "new"})),
         patch(
-            "homeplan.updates.subprocess.run",
-            side_effect=[subprocess.CompletedProcess([], 1), subprocess.CompletedProcess([], 0)],
+            "homeplan.updates.subprocess.run", return_value=subprocess.CompletedProcess([], 0)
         ) as run,
     ):
         _managed_launch(tmp_path)
-    assert run.call_args_list[0].args[0] == [str(candidate)]
-    assert run.call_args_list[1].args[0] == [str(tmp_path / "HomePlan.exe")]
-    assert not (tmp_path / "data/update-state.local.json").exists()
+    assert run.call_args.args[0] == [
+        str(app / "HomePlan.exe" if expected else tmp_path / "HomePlan.exe")
+    ]
 
 
 def test_existing_server_is_opened_without_replacing_code(tmp_path):
@@ -129,27 +116,8 @@ def test_existing_server_is_opened_without_replacing_code(tmp_path):
     with (
         patch("homeplan.gui_launcher.health", return_value={"instance": instance}),
         patch("homeplan.gui_launcher.open_window") as open_window,
-        patch("homeplan.updates.prepare_update") as prepare,
+        patch("homeplan.updates.urllib.request.urlopen") as network,
     ):
         _managed_launch(tmp_path)
     open_window.assert_called_once_with("http://127.0.0.1:8765")
-    prepare.assert_not_called()
-
-
-def test_same_build_does_not_download_archive():
-    release = {
-        "published_at": "2026-10-19T00:00:00Z",
-        "assets": [
-            {
-                "name": name,
-                "browser_download_url": f"https://github.com/hyb1992/homeplan/releases/download/test/{name}",
-            }
-            for name in ["HomePlan-Windows-x64.zip", "release.json"]
-        ],
-    }
-    with patch(
-        "homeplan.updates.fetch_bytes",
-        side_effect=[json.dumps(release).encode(), json.dumps({"build": "a" * 40}).encode()],
-    ) as fetch:
-        executable, _ = prepare_update(None, {"build": "a" * 40})
-    assert executable is None and fetch.call_count == 2
+    network.assert_not_called()

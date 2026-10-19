@@ -118,9 +118,9 @@ def main() -> None:
         "본인의 데이터와 백업은 이 폴더의 data에 새로 만들어집니다.\n"
         "재실행할 때 초기화되지 않습니다. 폴더를 옮길 때 data도 함께 옮기세요.\n"
         "가상 테스트는 공개 예시이며 전달자의 개인 데이터는 포함하지 않습니다.\n"
-        "인터넷 연결 시 새 버전을 확인하고 다음 실행 때 자동 업데이트합니다.\n"
+        "앱이 열린 뒤 새 버전만 확인합니다. 다운로드 버튼을 누를 때만 배포 파일을 받습니다.\n"
         "앱 창을 모두 닫으면 약 90초 후 서버가 종료되어 새 버전을 적용할 수 있습니다.\n"
-        "업데이트 중 data 폴더는 유지되며 적용 전에 DB를 백업합니다.\n"
+        "자동 설치는 하지 않습니다. 다운로드만으로 data 폴더나 기존 프로그램을 바꾸지 않습니다.\n"
         "상단 백업·복구에서 별도 백업 폴더를 지정할 수 있습니다.\n",
         "utf-8-sig",
     )
@@ -176,6 +176,10 @@ def main() -> None:
             }
         ),
         "utf-8",
+    )
+    (release_dir / "SHA256SUMS.txt").write_text(
+        hashlib.sha256(stable_archive.read_bytes()).hexdigest() + "  HomePlan-Windows-x64.zip\n",
+        "ascii",
     )
     (ROOT / "data/release-build.local.json").write_text(
         json.dumps({"directory": str(release_dir)}), "utf-8"

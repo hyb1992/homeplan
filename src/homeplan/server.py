@@ -20,7 +20,7 @@ from .models import Household
 from .repository import Repository, RevisionConflict, clean_household, seed_repository
 from .solver import max_price
 from .storage import dumps, load_rules
-from .updates import build_id, data_root
+from .updates import build_id, data_root, fetch_release
 from .workspaces import install_workspace_routes
 
 
@@ -124,6 +124,7 @@ def create_app(db_path: Path | None = None, *, seed_root: Path | None = None) ->
     rules = load_rules()
     app = FastAPI(title="우리집 매수계획", version=__version__, docs_url=None, redoc_url=None)
     app.state.last_heartbeat = time.monotonic()
+    update_cache: dict[str, Any] = {"time": 0.0, "release": None}
     app.add_middleware(
         TrustedHostMiddleware, allowed_hosts=["127.0.0.1", "localhost", "testserver"]
     )
@@ -177,6 +178,17 @@ def create_app(db_path: Path | None = None, *, seed_root: Path | None = None) ->
     @app.get("/api/workspaces")
     def workspaces() -> list[dict[str, Any]]:
         return repo.list_workspaces()
+
+    @app.get("/api/updates")
+    def updates(force: bool = False) -> dict[str, Any]:
+        if force or not update_cache["time"] or time.monotonic() - update_cache["time"] > 900:
+            update_cache["release"] = fetch_release()
+            update_cache["time"] = time.monotonic()
+        return {
+            "current_version": __version__,
+            "current_build": build_id(),
+            "release": update_cache["release"],
+        }
 
     @app.get("/api/workspaces/{key}")
     def workspace(key: str) -> dict[str, Any]:
