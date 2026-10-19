@@ -133,7 +133,7 @@ export function createUpgradeTools(c){
       const options={ownership:['공동명의','남편','아내'],mortgage_borrower:['남편','아내'],mortgage_mode:['대출금 고정','월 상환 한도 역산'],equal_principal_dsr_basis:['전체 평균','첫해'],mortgage_rate_type:['고정금리','변동금리','혼합금리','확인 필요']};
       fields.push({key,kind,html:options[key]?selectField(key,label,options[key]):field(key,label,kind)});
     }
-    openModal('상세 설정 · 보유 자금·휴직·수리·규칙',`<form id="upgrade-advanced"><p class="hint">자산 기준일의 보유금과 과거 계획으로 오늘의 시작 현금을 이어 계산합니다. 실제 잔액이 달라졌다면 기준일과 자금 목록을 함께 갱신하세요.</p><div class="fields">${fields.map(f=>f.html).join('')}</div>${actions()}</form>`);
+    openModal('상세 설정 · 보유 자금·휴직·수리·규칙',`<form id="upgrade-advanced"><p class="hint">자산 기준일의 보유금과 과거 계획으로 오늘의 시작 현금을 이어 계산합니다. 실제 잔액이 달라졌다면 기준일과 자금 목록을 함께 갱신하세요. 명의·지분은 기록용이며 명의별 세금은 별도로 계산하지 않습니다.</p><div class="fields">${fields.map(f=>f.html).join('')}</div>${actions()}</form>`);
     $('#upgrade-advanced').onsubmit=async e=>{e.preventDefault();try{
       const candidate=clone(state.draft);
       for(const {key,kind} of fields){const input=$(`#upgrade-advanced [data-key="${key}"]`);let v=input.value;
@@ -248,5 +248,5 @@ export function createUpgradeTools(c){
   });
   const checkToday=async()=>{if(document.hidden||!state.draft?.settings.start_today||draftDirty()||document.activeElement?.matches('input,select,textarea'))return;try{const h=await api('/api/health');if(lastToday&&h.today!==lastToday)await calculate();lastToday=h.today;}catch{}};document.addEventListener('visibilitychange',checkToday);window.addEventListener('focus',checkToday);setInterval(checkToday,60000);
   api('/api/health').then(h=>lastToday=h.today).catch(()=>{});
-  return {afterRender,scheduleDraft,flushDraft,clearDraft,offerRecovery,startOnboarding:newPlan};
+  return {afterRender,scheduleDraft,flushDraft,clearDraft,offerRecovery,startOnboarding:newPlan,applyCandidate,applySaved};
 }

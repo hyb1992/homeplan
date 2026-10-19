@@ -151,6 +151,7 @@ def build_ledger(
         debt(row.date, "주택담보대출", -row.principal)
 
     other_schedules: dict[str, Any] = {}
+    prepayment_schedules = {"mortgage": extra_mortgage}
     for prefix, key, rate, label in [
         ("credit", "credit", s.credit_rate, "신용대출"),
         ("sub", "sub", loans["sub_rate"], "청약담보대출"),
@@ -203,6 +204,7 @@ def build_ledger(
             add(row.date, -row.total, f"{key}_payment", f"{label} 납입", key)
             debt(row.date, label, -row.principal)
         other_schedules[key] = schedule
+        prepayment_schedules[key] = extra
 
     deposit = won(listing.price * s.deposit_ratio)
     if deposit + s.interim_amount > listing.price:
@@ -511,6 +513,7 @@ def build_ledger(
         "expense_breakdown": expense_breakdown,
         "mortgage_payments": mortgage_payments,
         "other_schedules": other_schedules,
+        "prepayment_schedules": prepayment_schedules,
         "assumptions": assumptions,
         "missing": missing,
     }

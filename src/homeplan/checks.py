@@ -367,6 +367,24 @@ def evaluate(
         "credit_schedule": [p.model_dump() for p in book["other_schedules"]["credit"]],
         "subscription_schedule": [p.model_dump() for p in book["other_schedules"]["sub"]],
     }
+    repayment_details = {}
+    for key, schedule in {
+        "mortgage": book["mortgage_payments"],
+        "credit": book["other_schedules"]["credit"],
+        "sub": book["other_schedules"]["sub"],
+    }.items():
+        rows = [{**p.model_dump(), "fee": 0, "kind": "정기 납부"} for p in schedule] + [
+            {"date": day, "principal": principal, "interest": 0, "fee": fee, "kind": "추가 상환"}
+            for day, principal, fee in book["prepayment_schedules"][key]
+        ]
+        rows.sort(key=lambda row: (row["date"], row["kind"] == "추가 상환"))
+        balance = loans[key]
+        for row in rows:
+            balance -= row["principal"]
+            row["balance"] = balance
+            row["total"] = row["principal"] + row["interest"] + row["fee"]
+        repayment_details[key] = rows
+    loan_summary["repayment_details"] = repayment_details
     return Result(
         status=status,
         checks=checks,

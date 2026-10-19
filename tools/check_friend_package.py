@@ -11,6 +11,7 @@ import zipfile
 from pathlib import Path
 
 import httpx
+from check_planning_menus import check as check_menus
 from playwright.sync_api import expect, sync_playwright
 
 
@@ -87,6 +88,7 @@ def main() -> None:
             key = next(row["id"] for row in workspaces if row["label"] == "FRIEND_TEST_ONLY")
             stored = httpx.get(base + f"/api/workspaces/{key}").json()
             assert stored["household"]["fund_events"][0]["value"] == 12340000
+            check_menus(base, root)
         finally:
             process.terminate()
             process.wait(timeout=10)
@@ -105,6 +107,7 @@ def main() -> None:
                 "initial_values": "zero",
                 "onboarding": "passed",
                 "save_restart": "passed",
+                "planning_menus_and_excel": "passed",
                 "python_on_path": False,
             }
         )

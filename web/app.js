@@ -3,6 +3,7 @@ import {seedExpenseItems} from './expense-plan.mjs';
 import {createUpgradeTools} from './workspace-tools.mjs';
 import {installUpdateNotice} from './update-notice.mjs';
 import {renderPurchaseCosts} from './purchase-costs.mjs';
+import {createPlanningMenus} from './planning-menus.mjs';
 
 const $ = (selector, root = document) => root.querySelector(selector);
 const $$ = (selector, root = document) => [...root.querySelectorAll(selector)];
@@ -23,6 +24,10 @@ const icons = {
   funds:'M3 7h18v14H3zM3 7l3-4h12l3 4M15 13h6v4h-6z',
   support:'M12 21s-9-5-9-12a5 5 0 0 1 9-3 5 5 0 0 1 9 3c0 7-9 12-9 12z',
   settings:'M4 20V10M12 20V4M20 20v-7M1 10h6M9 4h6M17 13h6',
+  leave:'M12 21s-9-5-9-12a5 5 0 0 1 9-3 5 5 0 0 1 9 3c0 7-9 12-9 12z',
+  repayment:'M4 3h16v18H4zM8 8h8M8 12h8M8 16h5',
+  banks:'M3 9l9-6 9 6M3 21h18M6 10v8M12 10v8M18 10v8',
+  import:'M12 3v12m-5-5 5 5 5-5M4 17v4h16v-4',
   ledger:'M4 3h16v18H4zM8 8h8M8 12h8M8 16h5'
 };
 const pages = {
@@ -31,6 +36,10 @@ const pages = {
   funds:['우리 자금','우리의 자금을 모아보기','예금부터 앞으로 들어올 돈까지, 항목을 자유롭게 추가하세요.'],
   support:['부모님 지원','도움을 받는 일정도 함께','증여와 차입을 구분하고, 실제 입금일을 기준으로 계획하세요.'],
   settings:['대출·가계','매달의 여유까지 살펴보기','대출 조건과 소득·지출을 바꿔 우리 가족에게 맞는 기준을 정하세요.'],
+  leave:['출산·휴직','출산과 휴직도 계획에 함께','출산휴가·육아휴직·복직에 따른 급여와 입금 시점을 정하세요.'],
+  repayment:['대출 상환표','매달 갚는 원금과 이자를 확인해요','대출별 정기 납부·추가 상환과 남은 원금을 함께 살펴보세요.'],
+  banks:['은행 상담','상담받은 조건을 모아 비교해요','은행별 금리와 한도를 보관하고 계산에 적용할 조건을 선택하세요.'],
+  import:['엑셀 가져오기','엑셀 계획을 앱으로 가져와요','가져올 내용을 먼저 확인하고 별도 계획으로 보관할 수 있어요.'],
   ledger:['날짜별 현금','그날, 우리에게 남는 돈','날짜를 고르면 대출금을 포함한 현금과 남은 빚을 함께 보여드려요.']
 };
 const settingLabels = {
@@ -64,6 +73,7 @@ function renderVariableAssets(){
 const state = {workspace:null,workspaces:[],base:null,draft:null,revision:0,result:null,route:'plan',confirmed:false,chartRange:'purchase',max:null,showAll:false,evaluating:false,saving:false,sequence:0,calculatedSnapshot:null,cashDate:null,expenseMonth:null};
 const inputProblems=new Map();
 let upgrades;
+let menus;
 let toastTimer;
 function toast(message, error = false) {
   const element = $('#toast'); element.textContent = message; element.className = `visible${error ? ' error' : ''}`;
@@ -315,7 +325,7 @@ function render() {
   $('#navigation').innerHTML=Object.entries(pages).map(([key,[name]])=>`<a href="#${key}" class="nav-item ${state.route===key?'active':''}" aria-current="${state.route===key?'page':'false'}"><svg viewBox="0 0 24 24"><path d="${icons[key]}" stroke-linecap="round" stroke-linejoin="round"/></svg><span>${name}</span></a>`).join('');
   $('#breadcrumb-title').textContent=label;$('#page-title').textContent=title;$('#page-description').textContent=description;
   $('#workspace-switch').innerHTML=state.workspaces.map(w=>`<button data-workspace="${esc(w.id)}" class="${w.id===state.workspace?'active':''}" aria-pressed="${w.id===state.workspace}">${esc(w.label)}</button>`).join('');
-  $('#content').innerHTML=`<nav class="mobile-nav">${Object.entries(pages).map(([key,[name]])=>`<a href="#${key}" class="${state.route===key?'active':''}">${name}</a>`).join('')}</nav>${state.workspace==='demo'?'<div class="demo-banner">가상 테스트 중입니다. 이 화면에서 저장해도 실제 가구 데이터는 바뀌지 않아요.</div>':''}`+({plan:renderPlan,costs:renderCosts,funds:renderFunds,support:renderSupport,settings:renderSettings,ledger:renderLedger}[state.route])();
+  $('#content').innerHTML=`<nav class="mobile-nav">${Object.entries(pages).map(([key,[name]])=>`<a href="#${key}" class="${state.route===key?'active':''}">${name}</a>`).join('')}</nav>${state.workspace==='demo'?'<div class="demo-banner">가상 테스트 중입니다. 이 화면에서 저장해도 실제 가구 데이터는 바뀌지 않아요.</div>':''}`+({plan:renderPlan,costs:renderCosts,funds:renderFunds,support:renderSupport,settings:renderSettings,ledger:renderLedger,leave:menus.renderLeave,repayment:menus.renderRepayment,banks:menus.renderBanks,import:menus.renderImport}[state.route])();
   updateSavedState();
   if(state.route==='plan'){syncRefundLink();$('#refund-interim-link').onclick=toggleRefundLink;}
   bindDateCash();
@@ -334,6 +344,7 @@ function render() {
   refreshCalendar();
   for(const problem of inputProblems.values()){if(problem.listingId&&problem.listingId!==selected().id)continue;const input=$(`[data-scope="${problem.scope}"][data-key="${problem.key}"]`);if(input){input.value=problem.raw;input.classList.add('invalid');input.setCustomValidity(problem.error);}}
   upgrades?.afterRender();
+  menus?.bind();
 }
 async function calculate(goToPlan=false) {
   if(!validInputs())return;
@@ -556,4 +567,5 @@ window.addEventListener('beforeunload',event=>{upgrades?.flushDraft();if(state.d
 async function boot(){state.workspaces=await api('/api/workspaces');let previous;try{previous=localStorage.getItem(`homeplan-last-workspace:${location.origin}`);}catch{}const initial=state.workspaces.some(w=>w.id===previous)?previous:state.workspaces.some(w=>w.id==='actual')?'actual':state.workspaces[0].id;const route=location.hash.slice(1);if(pages[route])state.route=route;await switchWorkspace(initial);if(state.draft.onboarding_pending)await upgrades.startOnboarding();}
 if(!globalThis.HOMEPLAN_BROWSER){const heartbeat=()=>fetch('/api/heartbeat',{method:'POST'}).catch(()=>{});heartbeat();setInterval(heartbeat,20000);document.addEventListener('visibilitychange',heartbeat);}
 upgrades=createUpgradeTools({state,inputProblems,$,$$,esc,won,shortMoney,clone,api,post,toast,render,calculate,validInputs,openModal,closeModal,confirmation,field,selectField,checkField,dialogInput,dialogSelect,readMoneyInput,commitExpensePlan,expenseRows,switchWorkspace,settingLabels});
+menus=createPlanningMenus({state,$,$$,esc,won,shortMoney,clone,api,post,toast,field,checkField,openModal,closeModal,confirmation,render,calculate,validInputs,switchWorkspace,upgrades:()=>upgrades});
 boot().then(()=>{window.homeplanStartup?.done();installUpdateNotice();}).catch(error=>{if(window.homeplanStartup)window.homeplanStartup.fail(error.message);else $('#content').innerHTML=`<section class="card empty">계획을 불러오지 못했습니다.<br>${esc(error.message)}<br>창을 닫고 바탕화면 바로가기를 다시 실행해 주세요.</section>`;});

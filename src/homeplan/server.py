@@ -16,6 +16,7 @@ from starlette.middleware.trustedhost import TrustedHostMiddleware
 
 from . import __version__
 from .checks import evaluate
+from .excel_upload import install_excel_routes
 from .models import Household
 from .repository import Repository, RevisionConflict, clean_household, seed_repository
 from .solver import max_price
@@ -63,6 +64,7 @@ def changes_between(before: dict[str, Any], after: dict[str, Any]) -> list[dict[
         "listings",
         "expense_items",
         "loan_prepayments",
+        "bank_quotes",
     ):
         old_rows = {
             row.get("id") or f"P{i:02}": row for i, row in enumerate(before.get(section) or [], 1)
@@ -88,7 +90,8 @@ def changes_between(before: dict[str, Any], after: dict[str, Any]) -> list[dict[
                         "kind": section,
                         "key": key,
                         "label": (new or old or {}).get(
-                            "name", (new or old or {}).get("kind", key)
+                            "name",
+                            (new or old or {}).get("bank", (new or old or {}).get("kind", key)),
                         ),
                         "before": old,
                         "after": new,
@@ -99,10 +102,14 @@ def changes_between(before: dict[str, Any], after: dict[str, Any]) -> list[dict[
 
 def mark_app_edits(before: dict[str, Any], after: dict[str, Any]) -> dict[str, Any]:
     candidate = clean_household(after)
+    imported = candidate.pop("_excel_import_baseline", {})
     old = clean_household(before)
     keys = set(candidate.get("app_setting_keys", []))
     keys.update(
-        key for key, value in candidate["settings"].items() if value != old["settings"].get(key)
+        key
+        for key, value in candidate["settings"].items()
+        if value != old["settings"].get(key)
+        and (key not in imported.get("settings", {}) or value != imported["settings"][key])
     )
     candidate["app_setting_keys"] = sorted(keys)
     for section in ("fund_events", "parent_support", "listings"):
@@ -111,7 +118,7 @@ def mark_app_edits(before: dict[str, Any], after: dict[str, Any]) -> dict[str, A
             key = row.get("id") or f"P{i:02}"
             if section == "parent_support" and not row.get("id"):
                 row["id"] = key
-            if row != previous.get(key):
+            if row != previous.get(key) and row != imported.get(section, {}).get(key):
                 row["origin"] = "app"
     return candidate
 
@@ -129,6 +136,7 @@ def create_app(db_path: Path | None = None, *, seed_root: Path | None = None) ->
         TrustedHostMiddleware, allowed_hosts=["127.0.0.1", "localhost", "testserver"]
     )
     app.state.repository = repo
+    install_excel_routes(app, today_korea)
 
     @app.middleware("http")
     async def local_requests(request: Request, call_next: Any) -> Response:
