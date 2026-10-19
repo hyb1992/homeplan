@@ -44,6 +44,7 @@ def main() -> None:
         '<script type="module" src="/app.js"></script>',
         f'<script type="module" src="./browser-boot.mjs?v={fingerprint}"></script>',
     )
+    index = index.replace('src="/startup.js"', f'src="./startup.js?v={fingerprint}"')
     index = index.replace('href="./styles.css"', f'href="./styles.css?v={fingerprint}"')
     (output / "index.html").write_text(index, "utf-8")
     (output / ".nojekyll").touch()

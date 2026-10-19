@@ -94,6 +94,9 @@ def browser_profile(root: Path, browser: str) -> Path:
 
 
 def open_window(url: str) -> None:
+    if os.environ.get("HOMEPLAN_BROWSER_MODE") == "default":
+        webbrowser.open(url, new=1)
+        return
     candidates = [
         Path(os.environ.get("PROGRAMFILES(X86)", r"C:\Program Files (x86)"))
         / "Microsoft/Edge/Application/msedge.exe",

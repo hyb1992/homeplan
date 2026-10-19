@@ -100,6 +100,13 @@ def main() -> None:
     (app / "fresh-start.flag").write_text(
         "Create an empty plan only when no database exists.\n", "utf-8"
     )
+    for name, setting in {
+        "업데이트 없이 실행.cmd": "HOMEPLAN_DISABLE_UPDATES=1",
+        "기본 브라우저로 실행.cmd": "HOMEPLAN_BROWSER_MODE=default",
+    }.items():
+        (app / name).write_text(
+            f'@echo off\nset "{setting}"\nstart "" "%~dp0HomePlan.exe"\n', encoding="ascii"
+        )
     (app / "처음 읽어주세요.txt").write_text(
         "우리집 매수계획 · 친구 전달용\n\n"
         "1. ZIP 전체를 문서 또는 바탕화면의 새 폴더에 압축 해제하세요.\n"

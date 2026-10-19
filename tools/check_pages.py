@@ -38,6 +38,7 @@ def main() -> None:
             page.on("pageerror", lambda error: errors.append(str(error)))
             sent = []
             page.on("request", lambda request: sent.append((request.url, request.post_data)))
+            page.route("**/build.json", lambda route: route.abort())
             page.goto(url)
             expect(page.locator("#upgrade-new")).to_be_visible(timeout=120000)
             page.locator("#upgrade-label").fill("BROWSER_SYNTHETIC_ONLY")
@@ -81,6 +82,16 @@ def main() -> None:
             assert not errors, errors
             assert not any("/api/" in path for path in requests), requests
             assert not any(body for _, body in sent), sent
+            failed = context.new_page()
+            failed.route("**/app.js*", lambda route: route.abort())
+            failed.goto(url)
+            expect(failed.locator("#startup-report")).to_be_visible(timeout=120000)
+            with failed.expect_download() as diagnostic:
+                failed.locator("#startup-report").click()
+            report = json.loads(Path(diagnostic.value.path()).read_text("utf-8"))
+            assert report["app"] == "HomePlan" and "BROWSER_SYNTHETIC_ONLY" not in json.dumps(
+                report
+            )
             browser.close()
     finally:
         server.shutdown()

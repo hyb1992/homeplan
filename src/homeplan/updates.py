@@ -41,7 +41,7 @@ def release_url(url: str) -> str:
     return url
 
 
-def fetch_bytes(url: str, limit: int, timeout: int = 12) -> bytes:
+def fetch_bytes(url: str, limit: int, timeout: int = 4) -> bytes:
     request = urllib.request.Request(
         url, headers={"User-Agent": "HomePlan-Updater", "Accept": "application/vnd.github+json"}
     )
@@ -113,7 +113,9 @@ def prepare_update(root: Path, state: dict[str, Any]) -> tuple[Path | None, dict
     folder = root / "versions" / build
     executable = folder / "HomePlan/HomePlan.exe"
     if not executable.is_file():
-        data = fetch_bytes(release_url(assets[ASSET]["browser_download_url"]), MAX_ARCHIVE)
+        data = fetch_bytes(
+            release_url(assets[ASSET]["browser_download_url"]), MAX_ARCHIVE, timeout=8
+        )
         with tempfile.TemporaryDirectory(prefix="homeplan-update-") as temporary:
             archive = Path(temporary) / "program.zip"
             archive.write_bytes(data)
@@ -150,7 +152,14 @@ def _managed_launch(root: Path) -> None:
         str((folder / "homeplan.local.sqlite").resolve()).encode()
     ).hexdigest()[:16]
     state_path = folder / "update-state.local.json"
-    state = json.loads(state_path.read_text("utf-8")) if state_path.exists() else {}
+    try:
+        state = json.loads(state_path.read_text("utf-8")) if state_path.exists() else {}
+        if not isinstance(state, dict) or not re.fullmatch(
+            r"[0-9a-f]{40}", str(state.get("build", ""))
+        ):
+            state = {}
+    except (OSError, ValueError):
+        state = {}
     current = root / "versions" / str(state.get("build", "")) / "HomePlan/HomePlan.exe"
     if not current.is_file():
         current = root / "HomePlan.exe"
@@ -173,12 +182,15 @@ def _managed_launch(root: Path) -> None:
     except Exception as error:
         with (folder / "updates.local.log").open("a", encoding="utf-8") as log:
             log.write(f"Update deferred: {type(error).__name__}: {error}\n")
-    executable = candidate or current
     environment = {**os.environ, "HOMEPLAN_DATA_ROOT": str(root), "HOMEPLAN_MANAGED_CHILD": "1"}
     if candidate and (folder / "homeplan.local.sqlite").exists():
         from .repository import Repository
 
-        Repository(folder / "homeplan.local.sqlite").backup()
+        try:
+            Repository(folder / "homeplan.local.sqlite").backup()
+        except Exception:
+            candidate = None
+    executable = candidate or current
     result = subprocess.run([str(executable)], cwd=root, env=environment, check=False)
     if result.returncode and candidate:
         subprocess.run([str(current)], cwd=root, env=environment, check=True)

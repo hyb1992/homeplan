@@ -62,10 +62,11 @@ def test_update_source_is_fixed(url):
         release_url(url)
 
 
-def test_offline_update_still_launches_current_app(tmp_path):
+@pytest.mark.parametrize("error", [OSError("offline"), TimeoutError("blocked")])
+def test_offline_update_still_launches_current_app(tmp_path, error):
     with (
         patch("homeplan.gui_launcher.health", return_value=None),
-        patch("homeplan.updates.prepare_update", side_effect=OSError("offline")),
+        patch("homeplan.updates.prepare_update", side_effect=error),
         patch(
             "homeplan.updates.subprocess.run", return_value=subprocess.CompletedProcess([], 0)
         ) as run,
@@ -73,6 +74,36 @@ def test_offline_update_still_launches_current_app(tmp_path):
         _managed_launch(tmp_path)
     assert run.call_args.args[0] == [str(tmp_path / "HomePlan.exe")]
     assert run.call_args.kwargs["env"]["HOMEPLAN_DATA_ROOT"] == str(tmp_path.resolve())
+
+
+def test_successful_update_preserves_database_versions_and_profile(tmp_path, household):
+    from homeplan.repository import Repository
+
+    repo = Repository(tmp_path / "data/homeplan.local.sqlite")
+    repo.seed("actual", "Synthetic user's plan", household.model_dump(mode="json"))
+    modified = repo.get("actual")["household"]
+    modified["settings"]["husband_net_pay"] = 4321000
+    original = repo.save("actual", modified, 0)
+    history = repo.history("actual")
+    profile = tmp_path / "data/edge.local.profile/keep"
+    profile.parent.mkdir()
+    profile.write_bytes(b"existing-browser-profile")
+    state = {"build": "a" * 40, "published": "2026-10-19T00:00:00Z"}
+    with (
+        patch("homeplan.gui_launcher.health", return_value=None),
+        patch("homeplan.updates.prepare_update", return_value=(tmp_path / "new.exe", state)),
+        patch("homeplan.updates.subprocess.run", return_value=subprocess.CompletedProcess([], 0)),
+    ):
+        _managed_launch(tmp_path)
+    assert repo.get("actual") == original
+    assert repo.history("actual") == history
+    assert (
+        repo.version("actual", 0)["settings"]["husband_net_pay"]
+        == household.settings.husband_net_pay
+    )
+    assert profile.read_bytes() == b"existing-browser-profile"
+    backups = repo.backup_versions()
+    assert backups and repo.backup_household(backups[0]["name"], "actual") == original["household"]
 
 
 def test_failed_new_version_falls_back_and_does_not_commit_update_state(tmp_path):
