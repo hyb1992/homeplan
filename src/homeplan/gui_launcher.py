@@ -15,6 +15,7 @@ import webbrowser
 from pathlib import Path
 from typing import Any
 
+from . import __version__
 from .updates import data_root
 
 
@@ -32,14 +33,18 @@ def health(port: int) -> dict[str, Any] | None:
 def ensure_server(root: Path) -> str:
     db_path = root / "data/homeplan.local.sqlite"
     instance = hashlib.sha256(str(db_path.resolve()).encode()).hexdigest()[:16]
-    for port in range(8765, 8775):
-        status = health(port)
+    statuses = {port: health(port) for port in range(8765, 8775)}
+    # Reuse only matching code. A source update must not keep opening an older server.
+    for port, status in statuses.items():
         if (
             status
             and status.get("service") == "homeplan-gui"
             and status.get("instance") == instance
+            and status.get("version") == __version__
+            and bool(status.get("managed")) == bool(getattr(sys, "frozen", False))
         ):
             return f"http://127.0.0.1:{port}"
+    for port in range(8765, 8775):
         with socket.socket() as probe:
             try:
                 probe.bind(("127.0.0.1", port))

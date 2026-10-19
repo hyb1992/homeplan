@@ -19,6 +19,15 @@ try {
     if ($Check) {
         & $pythonPath -m homeplan.gui_launcher --check
     } else {
+        $runtimeConfig = Join-Path $projectRoot 'data\desktop-runtime.local.json'
+        if (Test-Path -LiteralPath $runtimeConfig) {
+            $runtime = Get-Content -LiteralPath $runtimeConfig -Encoding UTF8 -Raw | ConvertFrom-Json
+            if (Test-Path -LiteralPath $runtime.executable) {
+                $env:HOMEPLAN_DATA_ROOT = $projectRoot
+                Start-Process -FilePath $runtime.executable -WorkingDirectory $projectRoot -WindowStyle Hidden
+                exit 0
+            }
+        }
         $pythonWindowPath = Join-Path $projectRoot '.venv\Scripts\pythonw.exe'
         Start-Process -FilePath $pythonWindowPath -ArgumentList @('-m', 'homeplan.gui_launcher') -WorkingDirectory $projectRoot -WindowStyle Hidden
         exit 0

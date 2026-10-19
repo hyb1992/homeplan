@@ -28,13 +28,6 @@ try{
   };
   await import('./app.js');
   navigator.storage?.persist?.().catch(()=>{});
-  let current;try{current=await(await realFetch(new URL('./build.json',import.meta.url),{cache:'no-store',signal:AbortSignal.timeout(4000)})).json();}catch{}
-  setInterval(async()=>{
-    try{
-      const latest=await(await realFetch(new URL('./build.json',import.meta.url),{cache:'no-store',signal:AbortSignal.timeout(4000)})).json();
-      if(current&&latest.engine!==current.engine){notice.textContent='새 버전이 배포되었습니다. 변경사항을 저장한 뒤 새로고침하면 업데이트됩니다.';}current=latest;
-    }catch{}
-  },300000);
 }catch(error){
   if(window.homeplanStartup){window.homeplanStartup.fail(error.message);}else{
   status.replaceChildren();

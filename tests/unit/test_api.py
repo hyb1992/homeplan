@@ -1,7 +1,7 @@
 import copy
 import json
 from datetime import date
-from unittest.mock import patch
+from unittest.mock import MagicMock, patch
 
 import pytest
 from fastapi.testclient import TestClient
@@ -427,3 +427,24 @@ def test_independent_backup_recovery_does_not_overwrite_other_workspaces(api_con
         == 422
     )
     assert client.get("/api/workspaces/demo/history").json()[0]["changes"]
+
+
+def test_update_application_requires_prepared_code_and_backs_up_before_restart(
+    api_context, tmp_path
+):
+    client, repo = api_context
+    preparation = client.app.state.update_preparation
+    before, history = repo.get("demo"), repo.history("demo")
+    assert client.post("/api/updates/apply").json() == {"restarting": False}
+    restart = MagicMock()
+    client.app.state.restart_for_update = restart
+    preparation.status = "ready"
+    with (
+        patch("homeplan.server.installed_update", return_value=tmp_path / "app.exe"),
+        patch.object(repo, "backup", wraps=repo.backup) as backup,
+    ):
+        assert client.post("/api/updates/apply").json() == {"restarting": True}
+        backup.assert_called_once()
+        restart.assert_called_once()
+        assert client.post("/api/updates/apply").json() == {"restarting": False}
+    assert repo.get("demo") == before and repo.history("demo") == history

@@ -3,6 +3,7 @@
 import argparse
 import hashlib
 import os
+import sys
 import time
 from datetime import date, datetime, timedelta, timezone
 from pathlib import Path
@@ -21,7 +22,7 @@ from .models import Household
 from .repository import Repository, RevisionConflict, clean_household, seed_repository
 from .solver import max_price
 from .storage import dumps, load_rules
-from .updates import build_id, data_root, fetch_release
+from .updates import UpdatePreparation, build_id, data_root, fetch_release, installed_update
 from .workspaces import install_workspace_routes
 
 
@@ -132,6 +133,8 @@ def create_app(db_path: Path | None = None, *, seed_root: Path | None = None) ->
     app = FastAPI(title="우리집 매수계획", version=__version__, docs_url=None, redoc_url=None)
     app.state.last_heartbeat = time.monotonic()
     update_cache: dict[str, Any] = {"time": 0.0, "release": None}
+    preparation = UpdatePreparation(root)
+    app.state.update_preparation = preparation
     app.add_middleware(
         TrustedHostMiddleware, allowed_hosts=["127.0.0.1", "localhost", "testserver"]
     )
@@ -174,6 +177,8 @@ def create_app(db_path: Path | None = None, *, seed_root: Path | None = None) ->
             "service": "homeplan-gui",
             "version": __version__,
             "build": build_id(),
+            "pid": os.getpid(),
+            "managed": bool(getattr(sys, "frozen", False)),
             "today": today_korea().isoformat(),
             "instance": hashlib.sha256(str(repo.path.resolve()).encode()).hexdigest()[:16],
         }
@@ -192,11 +197,32 @@ def create_app(db_path: Path | None = None, *, seed_root: Path | None = None) ->
         if force or not update_cache["time"] or time.monotonic() - update_cache["time"] > 900:
             update_cache["release"] = fetch_release()
             update_cache["time"] = time.monotonic()
+        preparation.start(update_cache["release"])
+        candidate = installed_update(root) if preparation.status == "ready" else None
+        ready_version = None
+        if candidate:
+            import json
+
+            ready_version = json.loads(
+                (candidate.parent / "_internal/homeplan/build-info.json").read_text("utf-8")
+            )["version"]
         return {
             "current_version": __version__,
             "current_build": build_id(),
             "release": update_cache["release"],
+            "preparation": preparation.status,
+            "ready_version": ready_version,
         }
+
+    @app.post("/api/updates/apply")
+    def apply_update() -> dict[str, bool]:
+        restart = getattr(app.state, "restart_for_update", None)
+        if preparation.status != "ready" or not installed_update(root) or restart is None:
+            return {"restarting": False}
+        repo.backup()
+        preparation.status = "restarting"
+        restart()
+        return {"restarting": True}
 
     @app.get("/api/workspaces/{key}")
     def workspace(key: str) -> dict[str, Any]:
@@ -348,6 +374,22 @@ def main() -> None:
         use_colors=False,
     )
     server = uvicorn.Server(config)
+    if getattr(sys, "frozen", False):
+        import subprocess
+        import threading
+
+        def restart_for_update() -> None:
+            subprocess.Popen(
+                [sys.executable, "--restart-update", str(args.port)],
+                cwd=data_root(),
+                stdin=subprocess.DEVNULL,
+                stdout=subprocess.DEVNULL,
+                stderr=subprocess.DEVNULL,
+                creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0),
+            )
+            threading.Timer(0.5, lambda: setattr(server, "should_exit", True)).start()
+
+        app.state.restart_for_update = restart_for_update
     if os.environ.get("HOMEPLAN_MANAGED_CHILD"):
         import threading
 

@@ -76,6 +76,14 @@ def main() -> None:
         ),
         "utf-8",
     )
+    boot = output / "browser-boot.mjs"
+    boot.write_text(
+        "globalThis.HOMEPLAN_BUILD="
+        + (output / "build.json").read_text("utf-8")
+        + ";\n"
+        + boot.read_text("utf-8"),
+        "utf-8",
+    )
     (ROOT / "data/pages-build.local.json").write_text(
         json.dumps({"directory": str(output)}), "utf-8"
     )

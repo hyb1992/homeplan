@@ -80,37 +80,35 @@ def main() -> None:
                 api(f"/api/workspaces/{key}")["data"]["household"]["settings"]["husband_net_pay"]
                 == 4100000
             )
-            before_download = api(f"/api/workspaces/{key}")["data"]
+            before_update = api(f"/api/workspaces/{key}")["data"]
             page.unroute("**/build.json")
-            asset = "https://github.com/hyb1992/homeplan/releases/download/test/HomePlan-Windows-x64.zip"
-            release = {
-                "tag_name": "v9.0.0",
-                "assets": [{"name": "HomePlan-Windows-x64.zip", "browser_download_url": asset}],
-            }
-            page.route(
-                "https://api.github.com/repos/hyb1992/homeplan/releases/latest",
-                lambda route: route.fulfill(json=release),
+            latest = json.loads((root / "build.json").read_text("utf-8"))
+            latest.update({"version": "9.0.0", "build": "9" * 40})
+            # An open editor prevents any automatic reload or loss of its inputs.
+            page.goto(url + "#funds")
+            expect(page.locator('[data-action="fund-add"]').first).to_be_visible(timeout=120000)
+            page.locator('[data-action="fund-add"]').first.click()
+            page.locator("#record-name").fill("Unsaved synthetic editor")
+            page.route("**/build.json", lambda route: route.fulfill(json=latest))
+            page.locator("#modal-close").click()
+            page.locator('[data-action="fund-add"]').first.click()
+            page.locator("#record-name").fill("Unsaved synthetic editor")
+            # The notice is outside the modal; invoke its handler without changing focus.
+            page.evaluate("document.querySelector('#update-check').click()")
+            expect(page.locator("#update-state")).to_contain_text("편집", timeout=15000)
+            expect(page.locator("#record-name")).to_have_value("Unsaved synthetic editor")
+            assert api(f"/api/workspaces/{key}")["data"] == before_update
+            assert not any(
+                ".zip" in request_url and "github.com" in request_url for request_url, _ in sent
             )
-            page.locator("#update-check").click()
-            expect(page.locator("#update-download")).to_be_visible(timeout=15000)
-            assert not any(url == asset for url, _ in sent)
-            context.route(
-                asset,
-                lambda route: route.fulfill(
-                    body=b"synthetic-download",
-                    content_type="application/zip",
-                    headers={"Content-Disposition": 'attachment; filename="test.zip"'},
-                ),
-            )
-            with page.expect_download() as manual_download:
-                page.locator("#update-download").click()
-            assert Path(manual_download.value.path()).read_bytes() == b"synthetic-download"
-            assert api(f"/api/workspaces/{key}")["data"] == before_download
-            page.unroute("https://api.github.com/repos/hyb1992/homeplan/releases/latest")
-            page.route(
-                "https://api.github.com/repos/hyb1992/homeplan/releases/latest",
-                lambda route: route.abort(),
-            )
+            page.locator("#modal-close").click()
+            # Applying the web build reloads code only, retaining browser data.
+            page.unroute("**/build.json")
+            page.locator("#update-apply").click()
+            expect(page.locator("#save-state")).to_contain_text("저장된", timeout=120000)
+            assert api(f"/api/workspaces/{key}")["data"] == before_update
+            page.unroute("**/build.json")
+            page.route("**/build.json", lambda route: route.abort())
             page.locator("#update-check").click()
             expect(page.locator("#update-state")).to_contain_text("건너뛰", timeout=15000)
             assert not errors, errors

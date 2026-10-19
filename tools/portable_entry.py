@@ -8,6 +8,11 @@ from pathlib import Path
 
 def main() -> None:
     multiprocessing.freeze_support()
+    if "--restart-update" in sys.argv:
+        from homeplan.updates import restart_server
+
+        restart_server(int(sys.argv[sys.argv.index("--restart-update") + 1]))
+        return
     if "--serve" in sys.argv:
         sys.argv.remove("--serve")
         root = Path(
@@ -28,7 +33,12 @@ def main() -> None:
         if not os.environ.get("HOMEPLAN_MANAGED_CHILD"):
             from homeplan.updates import managed_launch
 
-            managed_launch(Path(sys.executable).resolve().parent)
+            os.environ.setdefault("HOMEPLAN_BASE_EXE", str(Path(sys.executable).resolve()))
+            managed_launch(
+                Path(
+                    os.environ.get("HOMEPLAN_DATA_ROOT", str(Path(sys.executable).resolve().parent))
+                )
+            )
             return
         from homeplan.gui_launcher import main as launch
 

@@ -59,7 +59,7 @@ def main() -> None:
         "Keep core calculations free of I/O and clocks. Use integer won and Decimal.\n"
         "Validate with uv run ruff check ., uv run ruff format --check ., "
         "uv run mypy src/homeplan, uv run pytest -q, and node --test tests/web/test_form_inputs.mjs.\n"
-        "Publish Pages and Windows manually after checks. Detect new releases but download only on user click; never auto-install. Preserve user data.\n",
+        "Publish Pages and Windows manually after checks. Stage verified updates after startup, defer application during edits, preserve data/history/profiles, and skip unavailable GitHub.\n",
         "utf-8",
     )
     print(f"Public source: {destination}; no original Git history copied")

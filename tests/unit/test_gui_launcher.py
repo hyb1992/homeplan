@@ -57,7 +57,7 @@ def test_frozen_app_launches_itself_as_server(tmp_path):
     with (
         patch("homeplan.gui_launcher.sys.frozen", True, create=True),
         patch("homeplan.gui_launcher.sys.executable", "HomePlan.exe"),
-        patch("homeplan.gui_launcher.health", side_effect=[None, {"instance": instance}]),
+        patch("homeplan.gui_launcher.health", side_effect=[None] * 10 + [{"instance": instance}]),
         patch("homeplan.gui_launcher.socket.socket"),
         patch("homeplan.gui_launcher.subprocess.Popen", return_value=process) as launch,
     ):
