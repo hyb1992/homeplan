@@ -13,6 +13,8 @@ import urllib.request
 from datetime import UTC, datetime
 from pathlib import Path
 
+from homeplan.updates import version_tuple
+
 ROOT = Path(__file__).resolve().parents[1]
 REPO = "hyb1992/homeplan"
 
@@ -53,6 +55,11 @@ def main() -> None:
         return subprocess.check_output(["git", *command], cwd=cwd, text=True).strip()
 
     revision = git("rev-parse", "HEAD")
+    remote_revision = git("ls-remote", "origin", "refs/heads/main").split()[0]
+    if revision != remote_revision:
+        raise RuntimeError(
+            "원격 main의 최신 소스를 먼저 받아 검증·빌드하세요. 오래된 소스의 게시는 중단했습니다."
+        )
     if api("")["private"]:
         raise RuntimeError("공개 배포 저장소인지 먼저 확인하세요")
     if args.windows:
@@ -62,6 +69,18 @@ def main() -> None:
         if manifest["build"] != revision:
             raise RuntimeError("현재 공개 commit에서 다시 빌드하세요")
         version = importlib.metadata.version("homeplan")
+        if manifest["version"] != version:
+            raise RuntimeError("빌드와 설치된 패키지 버전이 다릅니다. 다시 빌드하세요.")
+        releases = api("/releases?per_page=100")
+        if any(
+            not release.get("draft")
+            and not release.get("prerelease")
+            and version_tuple(str(release.get("tag_name", ""))) > version_tuple(version)
+            for release in releases
+        ):
+            raise RuntimeError(
+                "더 높은 버전이 이미 게시되어 있어 이전 버전의 최신 배포 지정을 중단했습니다."
+            )
         tag = f"v{version}-initial-{datetime.now(UTC).strftime('%Y%m%d%H%M%S')}"
         release = api(
             "/releases",
