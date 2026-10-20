@@ -1,4 +1,4 @@
-import {moneyControl,dateControl,readMoneyInput} from './form-inputs.mjs?v=543d9938d200573c';
+import {moneyControl,dateControl,readMoneyInput} from './form-inputs.mjs?v=01dbe88933a7c68a';
 
 const loanNames={mortgage:'주택담보대출',credit:'신용대출',sub:'청약담보대출'};
 export const leaveGroups=[
@@ -29,8 +29,8 @@ export function repaymentCsv(rows){
 }
 
 export function createPlanningMenus(ctx){
-  const {state,$,$$,esc,won,shortMoney,clone,api,post,toast,field,checkField,openModal,closeModal,confirmation,render,calculate,validInputs}=ctx;
-  let loan='mortgage',year='all',importPreview=null,importSnapshot=null,importWorkspace=null,importMode='new',importGeneration=0;
+  const {state,$,$$,esc,won,shortMoney,clone,toast,field,checkField,openModal,closeModal,confirmation,render,calculate}=ctx;
+  let loan='mortgage',year='all';
   const tools=()=>ctx.upgrades();
   const staleNotice=()=>state.calculatedSnapshot!==JSON.stringify(state.draft)?'<p class="recalculate-note">입력이 바뀌었습니다. 다시 계산하면 새 조건의 결과를 보여드려요.</p>':'';
   const buttons=()=>'<div class="bottom-actions"><button class="button" data-menu="calculate">다시 계산</button><button class="button primary" data-action="save">변경사항 저장</button></div>';
@@ -73,46 +73,6 @@ export function createPlanningMenus(ctx){
       await tools().applyCandidate(h);closeModal();toast('상담 기록을 반영했습니다. 변경사항을 저장해 주세요.');
     }catch(error){$('#bank-error').textContent=error.message;}finally{if(submit.isConnected)submit.disabled=false;}};
   }
-  function renderImport(){
-    importGeneration++;
-    // A preview is tied to the exact workspace and draft from which it was made.
-    if(importWorkspace!==state.workspace||importSnapshot!==JSON.stringify(state.draft))importPreview=null;
-    return `<section class="card form-section"><h2>엑셀에서 계획 가져오기</h2><p class="hint">매수계획 v18 형식의 .xlsx 파일을 지원합니다. 임의 양식은 지원하지 않습니다. 엑셀에서 수식을 다시 계산하고 저장한 파일을 선택하세요. 가져온 뒤에는 앱의 저장 데이터를 사용합니다.</p><form id="excel-form"><div class="fields"><div class="field wide"><label for="excel-file">엑셀 파일 · 최대 10MB</label><input id="excel-file" type="file" accept=".xlsx" required></div><div class="field"><label for="excel-mode">가져오는 방식</label><select id="excel-mode"><option value="new">별도 새 계획으로 만들기</option><option value="merge">현재 계획에 추가 · 기존 입력 우선</option></select></div>${formField('excel-label','새 계획 이름','엑셀에서 가져온 계획')}</div><label class="checkbox-line"><input id="excel-refresh" type="checkbox" disabled>현재 계획의 엑셀 출처 항목도 갱신 · 앱에서 수정한 값은 유지</label><button class="button primary" type="submit">가져올 내용 미리보기</button><p id="excel-error" class="modal-error" role="alert"></p></form></section><div id="excel-preview"></div>`;
-  }
-  function invalidateImport(){importGeneration++;importPreview=null;$('#excel-preview').innerHTML='';}
-  async function previewImport(e){
-    e.preventDefault();const button=e.submitter;button.disabled=true;invalidateImport();
-    try{
-      if(!validInputs())return;
-      const file=$('#excel-file').files[0];if(!file||file.size>10*1024*1024)throw new Error('10MB 이하 .xlsx 파일을 선택하세요.');
-      const snapshot=JSON.stringify(state.draft),workspace=state.workspace,mode=$('#excel-mode').value,generation=importGeneration;
-      const content=await new Promise((resolve,reject)=>{const r=new FileReader();r.onload=()=>resolve(String(r.result).split(',')[1]);r.onerror=()=>reject(new Error('파일을 읽지 못했습니다.'));r.readAsDataURL(file);});
-      const preview=await post('/api/import-excel/preview',{filename:file.name,content,household:mode==='merge'?clone(state.draft):null,refresh_imported:mode==='merge'&&$('#excel-refresh').checked});
-      const result=await post('/api/evaluate',{household:preview.household});
-      if(generation!==importGeneration||workspace!==state.workspace||snapshot!==JSON.stringify(state.draft)||!$('#excel-preview'))throw new Error('입력이 바뀌었습니다. 다시 미리보기 하세요.');
-      importPreview=preview;importSnapshot=snapshot;importWorkspace=workspace;importMode=mode;
-      $('#excel-preview').innerHTML=`<section class="card"><h2>가져오기 미리보기 · ${esc(preview.filename)}</h2><p>자금 ${preview.counts.fund_events}개 · 부모님 지원 ${preview.counts.parent_support}개 · 매물 ${preview.counts.listings}개</p><p>판정 ${esc(result.status)} · 최저 현금 ${shortMoney(result.kpis.min_balance_overall)}</p><ul>${preview.warnings.map(w=>`<li>${esc(w)}</li>`).join('')}</ul><p class="hint">${mode==='new'?'확인하면 별도 계획을 만들어 저장합니다. 기존 계획은 보존됩니다.':'현재 초안에만 반영합니다. 계산 결과를 확인하고 변경사항을 저장하세요.'}</p><button class="button primary" id="excel-apply">${mode==='new'?'이 내용으로 새 계획 저장':'현재 초안에 반영'}</button></section>`;
-      $('#excel-apply').onclick=applyImport;
-    }catch(error){if($('#excel-error'))$('#excel-error').textContent=error.message;else toast(error.message,true);}finally{if(button.isConnected)button.disabled=false;}
-  }
-  async function applyImport(e){
-    const button=e.currentTarget;button.disabled=true;
-    try{
-      if(!importPreview||importWorkspace!==state.workspace||importSnapshot!==JSON.stringify(state.draft))throw new Error('입력이 바뀌었습니다. 다시 미리보기 하세요.');
-      const candidate=clone(importPreview.household);
-      if(importMode==='merge'){await tools().applyCandidate(candidate);toast('엑셀 내용을 초안에 반영했습니다. 확인 후 저장하세요.');}
-      else{
-        const label=$('#excel-label').value.trim();if(!label)throw new Error('새 계획 이름을 입력하세요.');
-        if(!await confirmation('엑셀 내용으로 새 계획을 저장할까요?','<p>현재 계획은 유지됩니다. 저장하지 않은 현재 초안도 이 브라우저에 임시 보관합니다.</p>','새 계획 저장'))return;
-        tools().flushDraft();
-        const saved=await post('/api/workspaces',{label,household:candidate});
-        state.workspaces=await api('/api/workspaces');state.workspace=saved.id;state.cashDate=null;state.confirmed=false;state.max=null;state.sequence++;
-        try{localStorage.setItem(`homeplan-last-workspace:${location.origin}`,saved.id);}catch{}
-        await tools().applySaved(saved);toast('별도 계획으로 저장했습니다.');
-      }
-      importPreview=null;state.route='plan';location.hash='plan';render();
-    }catch(error){if($('#excel-error'))$('#excel-error').textContent=error.message;else toast(error.message,true);}finally{if(button.isConnected)button.disabled=false;}
-  }
   async function bankAction(button){
     const action=button.dataset.menu,index=Number(button.dataset.index),q=state.draft.bank_quotes[index];
     if(action==='bank-add'){bankDialog();return;}
@@ -133,12 +93,7 @@ export function createPlanningMenus(ctx){
       $('#repayment-year').onchange=e=>{year=e.target.value;render();};
       $('#repayment-download').onclick=()=>{const url=URL.createObjectURL(new Blob([repaymentCsv(schedule().filter(r=>year==='all'||r.date.startsWith(year)))],{type:'text/csv;charset=utf-8'})),a=document.createElement('a');a.href=url;a.download=`homeplan-${loan}-${year}.csv`;a.click();setTimeout(()=>URL.revokeObjectURL(url),1000);};
     }
-    if(state.route==='import'){
-      $('#excel-form').onsubmit=previewImport;
-      $('#excel-mode').onchange=()=>{$('#excel-refresh').disabled=$('#excel-mode').value!=='merge';$('#excel-label').disabled=$('#excel-mode').value==='merge';invalidateImport();};
-      $('#excel-file').onchange=invalidateImport;$('#excel-refresh').onchange=invalidateImport;
-    }
   }
   document.addEventListener('click',async e=>{const button=e.target.closest('[data-menu]');if(!button)return;if(state.saving){toast('저장이 끝난 뒤 다시 시도해 주세요.');return;}try{if(button.dataset.menu==='calculate')await calculate();else await bankAction(button);}catch(error){toast(error.message,true);}});
-  return {renderLeave,renderRepayment,renderBanks,renderImport,bind};
+  return {renderLeave,renderRepayment,renderBanks,bind};
 }
