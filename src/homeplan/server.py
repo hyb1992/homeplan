@@ -14,16 +14,26 @@ from fastapi.responses import JSONResponse, Response
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
 from starlette.middleware.trustedhost import TrustedHostMiddleware
+from starlette.types import Scope
 
 from . import __version__
 from .checks import evaluate
-from .excel_upload import install_excel_routes
 from .models import Household
 from .repository import Repository, RevisionConflict, clean_household, seed_repository
 from .solver import max_price
 from .storage import dumps, load_rules
 from .updates import UpdatePreparation, build_id, data_root, fetch_release, installed_update
 from .workspaces import install_workspace_routes
+
+
+class WebStaticFiles(StaticFiles):
+    """Windows 파일 연결 설정과 무관하게 스크립트의 MIME 형식을 보장한다."""
+
+    async def get_response(self, path: str, scope: Scope) -> Response:
+        response = await super().get_response(path, scope)
+        if response.status_code in (200, 206) and Path(path).suffix.lower() in {".js", ".mjs"}:
+            response.headers["Content-Type"] = "text/javascript; charset=utf-8"
+        return response
 
 
 class EvaluationInput(BaseModel):
@@ -139,7 +149,6 @@ def create_app(db_path: Path | None = None, *, seed_root: Path | None = None) ->
         TrustedHostMiddleware, allowed_hosts=["127.0.0.1", "localhost", "testserver"]
     )
     app.state.repository = repo
-    install_excel_routes(app, today_korea)
 
     @app.middleware("http")
     async def local_requests(request: Request, call_next: Any) -> Response:
@@ -348,7 +357,7 @@ def create_app(db_path: Path | None = None, *, seed_root: Path | None = None) ->
     if not web.exists():
         web = Path(__file__).parent / "web_assets"
     if web.exists():
-        app.mount("/", StaticFiles(directory=web, html=True), name="gui")
+        app.mount("/", WebStaticFiles(directory=web, html=True), name="gui")
     return app
 
 

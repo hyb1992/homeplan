@@ -1,6 +1,8 @@
 import copy
 import json
+import mimetypes
 from datetime import date
+from pathlib import Path
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -41,6 +43,27 @@ def test_api_evaluation_and_ui_assets(api_context):
     assert "/api/workspaces/{key}/preview" in client.get("/openapi.json").json()["paths"]
     assert client.get("/data/homeplan.local.sqlite").status_code == 404
     assert client.get("/expense-plan.mjs").status_code == 200
+
+
+@pytest.mark.parametrize("wrong_type", ["text/plain", "application/octet-stream"])
+def test_javascript_content_type_ignores_os_file_associations(api_context, monkeypatch, wrong_type):
+    client, _ = api_context
+    mimetypes.init()
+    for extension in (".js", ".mjs"):
+        monkeypatch.setitem(mimetypes.types_map, extension, wrong_type)
+    web = Path(__file__).resolve().parents[2] / "web"
+    for asset in web.rglob("*"):
+        if asset.suffix not in {".js", ".mjs"}:
+            continue
+        url = "/" + asset.relative_to(web).as_posix() + "?v=mime-regression"
+        for method in ("GET", "HEAD"):
+            response = client.request(method, url)
+            assert response.status_code == 200, url
+            assert response.headers["content-type"] == "text/javascript; charset=utf-8", url
+            assert response.headers["x-content-type-options"] == "nosniff"
+            assert response.headers["cache-control"] == "no-store"
+    assert client.get("/missing.mjs").status_code == 404
+    assert client.get("/api/health").headers["content-type"] == "application/json"
 
 
 def test_release_detection_does_not_change_saved_plan_and_failure_is_optional(api_context):

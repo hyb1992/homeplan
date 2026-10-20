@@ -1,11 +1,10 @@
-"""로컬/정적 웹에서 새 메뉴와 엑셀 가져오기를 가상 입력으로 검증한다."""
+"""로컬/정적 웹의 계획 메뉴를 가상 입력으로 검증한다."""
 
 import argparse
 import functools
 import http.server
 import json
 import os
-import runpy
 import socket
 import subprocess
 import sys
@@ -21,11 +20,8 @@ ROOT = Path(__file__).resolve().parents[1]
 
 
 def check(url: str, folder: Path) -> None:
-    workbook = runpy.run_path(str(ROOT / "tests/unit/test_menu_features.py"))["make_excel"]()
-    excel = folder / "synthetic.xlsx"
-    excel.write_bytes(workbook)
     with sync_playwright() as p:
-        browser = p.chromium.launch(channel="msedge" if os.name == "nt" else None)
+        browser = p.chromium.launch(channel="msedge" if os.name == "nt" else None, headless=True)
         context = browser.new_context(
             viewport={"width": 1440, "height": 1000}, accept_downloads=True
         )
@@ -92,41 +88,22 @@ def check(url: str, folder: Path) -> None:
         page.locator('[data-menu="bank-delete"]').click()
         page.get_by_role("button", name="삭제", exact=True).last.click()
         expect(page.locator(".bank-record")).to_have_count(0)
-        page.locator('a[href="#import"]:visible').first.click()
-        page.locator("#excel-file").set_input_files(excel)
-        page.locator("#excel-mode").select_option("merge")
-        page.locator('#excel-form button[type="submit"]').click()
-        expect(page.locator("#excel-apply")).to_be_visible(timeout=120000)
-        # Preview does not change the saved revision or bank records.
-        untouched = page.evaluate("async key=>(await fetch(`/api/workspaces/${key}`)).json()", key)
-        assert untouched == saved
-        page.locator("#excel-apply").click()
-        expect(page.locator('a[href="#plan"].active:visible').first).to_be_visible()
-        page.locator('a[href="#funds"]:visible').first.click()
-        expect(page.locator("#content")).to_contain_text("가상 예금")
-        page.locator('a[href="#settings"]:visible').first.click()
-        assert (
-            page.locator("#field-husband_net_pay").evaluate(
-                "e=>Number(e.value.replaceAll(',',''))*Number(document.querySelector('[data-unit-for=field-husband_net_pay]').value)"
-            )
-            == data["settings"]["husband_net_pay"]
-        )
-        page.locator('a[href="#import"]:visible').first.click()
-        page.locator("#excel-file").set_input_files(excel)
-        page.locator('#excel-form button[type="submit"]').click()
-        expect(page.locator("#excel-apply")).to_be_visible(timeout=120000)
-        page.locator("#excel-apply").click()
-        page.get_by_role("button", name="새 계획 저장", exact=True).click()
+        page.locator("#save-button").click()
+        page.get_by_role("button", name="확인하고 저장", exact=True).click()
         expect(page.locator("#save-state")).to_have_text("저장된 계획")
+        saved = page.evaluate("async key=>(await fetch(`/api/workspaces/${key}`)).json()", key)
+        assert saved["household"]["bank_quotes"] == []
+        expect(page.locator('a[href="#import"]')).to_have_count(0)
+        # Old bookmarks fall back to the plan without changing saved data.
+        page.evaluate("location.hash='import'")
+        page.reload()
         expect(page.locator("#page-title")).to_have_text("매수 계획을 한눈에")
-        # Original workspace and history remain after creating the imported plan.
+        expect(page.locator(".runtime-summary")).to_be_visible(timeout=120000)
         assert (
             page.evaluate("async key=>(await fetch(`/api/workspaces/${key}`)).json()", key) == saved
         )
-        page.reload()
-        expect(page.locator("#content")).to_contain_text("가상 매물", timeout=120000)
         page.set_viewport_size({"width": 390, "height": 844})
-        for route in ["leave", "repayment", "banks", "import"]:
+        for route in ["leave", "repayment", "banks"]:
             page.locator(f'a[href="#{route}"]:visible').first.click()
             assert page.evaluate("document.documentElement.scrollWidth<=window.innerWidth")
         assert not errors, errors

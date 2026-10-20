@@ -109,7 +109,7 @@ def main() -> None:
                 "initial_values": "zero",
                 "onboarding": "passed",
                 "save_restart": "passed",
-                "planning_menus_and_excel": "passed",
+                "planning_menus": "passed",
                 "fund_builder_and_composition": "passed",
                 "python_on_path": False,
             }

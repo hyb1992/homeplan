@@ -1,8 +1,6 @@
 """허용 목록으로 GitHub Pages 배포 파일만 생성한다. 사용자 데이터는 읽지 않는다."""
 
 import hashlib
-import importlib.metadata
-import importlib.util
 import json
 import shutil
 import subprocess
@@ -29,19 +27,6 @@ def main() -> None:
     with zipfile.ZipFile(archive, "w", zipfile.ZIP_DEFLATED) as package:
         for path in sorted((ROOT / "src/homeplan").rglob("*.py")):
             package.write(path, path.relative_to(ROOT / "src"))
-        # Pure Python Excel reader: bundled locally, not fetched on file selection.
-        for name in ("openpyxl", "et_xmlfile"):
-            spec = importlib.util.find_spec(name)
-            if spec is None or not spec.submodule_search_locations:
-                raise RuntimeError(f"Excel reader missing: {name}")
-            module_root = Path(next(iter(spec.submodule_search_locations)))
-            for path in sorted(module_root.rglob("*")):
-                if path.is_file() and "__pycache__" not in path.parts:
-                    package.write(path, name + "/" + path.relative_to(module_root).as_posix())
-            distribution = importlib.metadata.distribution(name)
-            for entry in distribution.files or []:
-                if "license" in str(entry).lower() and ".dist-info" in str(entry):
-                    package.write(distribution.locate_file(entry), "licenses/" + str(entry))
         for path in sorted((ROOT / "data/rules").glob("*.yaml")):
             package.write(path, "homeplan/bundled_rules/" + path.name)
         package.write(
