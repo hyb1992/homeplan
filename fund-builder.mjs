@@ -1,4 +1,4 @@
-import {readMoneyInput,closeCalendar} from './form-inputs.mjs?v=bbb1f0d1db400a0c';
+import {readMoneyInput,closeCalendar} from './form-inputs.mjs?v=543d9938d200573c';
 
 export const fundTypes=[
   ['현금·예금','입출금 통장, 정기예금, 비상금'],

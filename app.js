@@ -1,10 +1,10 @@
-import {moneyControl, dateControl, readMoneyInput, normalizeMoneyInput, installInputControls, closeCalendar, refreshCalendar, formatMoney, moneyWords} from './form-inputs.mjs?v=bbb1f0d1db400a0c';
-import {seedExpenseItems} from './expense-plan.mjs?v=bbb1f0d1db400a0c';
-import {createUpgradeTools} from './workspace-tools.mjs?v=bbb1f0d1db400a0c';
-import {installUpdateNotice} from './update-notice.mjs?v=bbb1f0d1db400a0c';
-import {renderPurchaseCosts} from './purchase-costs.mjs?v=bbb1f0d1db400a0c';
-import {createPlanningMenus} from './planning-menus.mjs?v=bbb1f0d1db400a0c';
-import {installFundBuilder,renderFundComposition,fundComposition,fundTypes} from './fund-builder.mjs?v=bbb1f0d1db400a0c';
+import {moneyControl, dateControl, readMoneyInput, normalizeMoneyInput, installInputControls, closeCalendar, refreshCalendar, formatMoney, moneyWords} from './form-inputs.mjs?v=543d9938d200573c';
+import {seedExpenseItems} from './expense-plan.mjs?v=543d9938d200573c';
+import {createUpgradeTools} from './workspace-tools.mjs?v=543d9938d200573c';
+import {installUpdateNotice} from './update-notice.mjs?v=543d9938d200573c';
+import {renderPurchaseCosts} from './purchase-costs.mjs?v=543d9938d200573c';
+import {createPlanningMenus} from './planning-menus.mjs?v=543d9938d200573c';
+import {installFundBuilder,renderFundComposition,fundComposition,fundTypes} from './fund-builder.mjs?v=543d9938d200573c';
 
 const $ = (selector, root = document) => root.querySelector(selector);
 const $$ = (selector, root = document) => [...root.querySelectorAll(selector)];
@@ -586,4 +586,4 @@ async function boot(){state.workspaces=await api('/api/workspaces');let previous
 if(!globalThis.HOMEPLAN_BROWSER){const heartbeat=()=>fetch('/api/heartbeat',{method:'POST'}).catch(()=>{});heartbeat();setInterval(heartbeat,20000);document.addEventListener('visibilitychange',heartbeat);}
 upgrades=createUpgradeTools({state,inputProblems,$,$$,esc,won,shortMoney,clone,api,post,toast,render,calculate,validInputs,openModal,closeModal,confirmation,field,selectField,checkField,dialogInput,dialogSelect,readMoneyInput,commitExpensePlan,expenseRows,switchWorkspace,settingLabels});
 menus=createPlanningMenus({state,$,$$,esc,won,shortMoney,clone,api,post,toast,field,checkField,openModal,closeModal,confirmation,render,calculate,validInputs,switchWorkspace,upgrades:()=>upgrades});
-boot().then(()=>{window.homeplanStartup?.done();installUpdateNotice();}).catch(error=>{if(window.homeplanStartup)window.homeplanStartup.fail(error.message);else $('#content').innerHTML=`<section class="card empty">계획을 불러오지 못했습니다.<br>${esc(error.message)}<br>창을 닫고 바탕화면 바로가기를 다시 실행해 주세요.</section>`;});
+boot().then(()=>{window.homeplanStartup?.done();installUpdateNotice({canReload:()=>!dirty()&&!state.saving&&!state.evaluating&&!$('#modal').open,beforeReload:()=>upgrades?.flushDraft()});}).catch(error=>{if(window.homeplanStartup)window.homeplanStartup.fail(error.message);else $('#content').innerHTML=`<section class="card empty">계획을 불러오지 못했습니다.<br>${esc(error.message)}<br>창을 닫고 바탕화면 바로가기를 다시 실행해 주세요.</section>`;});
