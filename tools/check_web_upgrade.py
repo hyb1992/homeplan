@@ -130,13 +130,51 @@ def main() -> None:
                 page.locator("#upgrade-cash").fill("8000만원")
                 page.locator("#upgrade-husband").fill("400만원")
                 page.locator("#upgrade-living").fill("200만원")
+                page.locator("#upgrade-lease").fill("3억원")
+                page.locator("#upgrade-debt").fill("2억원")
+                page.locator("#upgrade-lease_interest").fill("60만원")
+                expect(page.locator("#upgrade-lease-net")).to_contain_text("100,000,000원")
+                expect(page.locator('label[for="upgrade-lease"]')).to_contain_text("대출 포함")
+                expect(page.locator('label[for="upgrade-lease_interest"]')).to_contain_text(
+                    "월 납부액"
+                )
+                page.set_viewport_size({"width": 390, "height": 844})
+                assert page.locator("#modal").evaluate("e=>e.scrollWidth<=e.clientWidth")
+                page.locator("#modal").screenshot(path=ROOT / "data/new-plan-lease.local.png")
+                page.set_viewport_size({"width": 1440, "height": 1000})
                 page.get_by_role("button", name="다음", exact=True).click()
                 page.locator("#upgrade-price").fill("5억원")
                 page.get_by_role("button", name="다음", exact=True).click()
                 page.locator("#upgrade-tax").fill("123만원")
                 page.locator("#upgrade-lawyer_fee").fill("120만원")
-                page.locator("#upgrade-cost-preview").click()
+                expect(page.locator("#upgrade-cost-status")).to_contain_text("다시 계산")
+                before_preview = httpx.get(base + "/api/workspaces").json()
+                held_requests = []
+
+                def hold_preview(route):
+                    held_requests.append(route)
+
+                page.route("**/api/evaluate", hold_preview)
+                page.get_by_role("button", name="입력한 비용으로 다시 계산", exact=True).click()
+                expect(page.locator("#upgrade-cost-preview")).to_be_disabled()
+                expect(page.locator("#upgrade-cost-status")).to_contain_text("계산하고 있습니다")
+                with page.expect_response(lambda r: r.url.endswith("/api/evaluate")) as preview:
+                    held_requests[0].continue_()
+                page.unroute("**/api/evaluate", hold_preview)
+                expect(page.locator("#upgrade-cost-status")).to_contain_text("계산 완료")
+                costs = preview.value.json()["costs"]
+                total = costs["closing_costs_total"] + costs["move_in_costs"]
+                expect(page.locator(".new-plan-cost-total")).to_have_text(f"{total:,}원")
+                assert costs["acquisition_taxes_total"] == 1230000
+                assert costs["registration"]["lawyer"] == 1200000
+                assert httpx.get(base + "/api/workspaces").json() == before_preview
                 expect(page.locator("#upgrade-lawyer_fee")).to_be_visible()
+                page.set_viewport_size({"width": 390, "height": 844})
+                assert page.locator("#modal").evaluate("e=>e.scrollWidth<=e.clientWidth")
+                page.locator("#upgrade-cost-result").screenshot(
+                    path=ROOT / "data/new-plan-cost-preview.local.png"
+                )
+                page.set_viewport_size({"width": 1440, "height": 1000})
                 page.get_by_role("button", name="새 계획 저장", exact=True).click()
                 expect(page.locator("#upgrade-new")).not_to_be_visible()
                 expect(page.locator("#cost-tax-mode")).to_have_value("manual")
@@ -148,6 +186,29 @@ def main() -> None:
                 new_plan = httpx.get(base + f"/api/workspaces/{created['id']}").json()
                 assert new_plan["household"]["listings"][0]["acquisition_tax_amount"] == 1230000
                 assert new_plan["household"]["settings"]["lawyer_fee"] == 1200000
+                funds = {row["id"]: row for row in new_plan["household"]["fund_events"]}
+                assert funds["LEASE"]["value"] == 300000000
+                assert funds["DEBT"]["value"] == 200000000
+                interest = next(
+                    row
+                    for row in new_plan["household"]["expense_items"]
+                    if row["id"] == "LEASE-INTEREST"
+                )
+                assert interest["amount"] == 600000
+                assert interest["end_date"] == "전세대출상환일"
+                evaluated = httpx.post(
+                    base + "/api/evaluate", json={"household": new_plan["household"]}
+                ).json()
+                interest_entries = [
+                    row for row in evaluated["ledger"] if row["source"] == "LEASE-INTEREST"
+                ]
+                assert len(interest_entries) >= 2
+                assert all(row["amount"] == -600000 for row in interest_entries)
+                assert all(
+                    row["date"] <= evaluated["schedule"]["lease_loan_repay_date"]
+                    for row in interest_entries
+                )
+                assert len({row["date"][:7] for row in interest_entries}) == len(interest_entries)
                 page.locator("#cost-tax-mode").select_option("auto")
                 expect(page.locator("#field-acquisition_tax_amount")).not_to_be_visible()
                 page.locator("#cost-tax-mode").select_option("manual")
