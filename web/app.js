@@ -576,7 +576,6 @@ document.addEventListener('click',event=>{
 });
 $('#workspace-switch').onclick=event=>{const button=event.target.closest('[data-workspace]');if(button)switchWorkspace(button.dataset.workspace).catch(error=>toast(error.message,true));};
 $('#toolbar-calculate').onclick=()=>calculate();$('#save-button').onclick=saveDraft;$('#history-button').onclick=showHistory;$('#modal-close').onclick=closeModal;
-$('#modal').addEventListener('click',event=>{if(event.target===$('#modal')){const rect=event.target.getBoundingClientRect();if(event.clientX<rect.left||event.clientX>rect.right||event.clientY<rect.top||event.clientY>rect.bottom)closeModal();}});
 $('#export-button').onclick=async()=>{try{const response=await fetch(`/api/workspaces/${state.workspace}/export`);if(!response.ok)throw new Error('내보내기에 실패했습니다.');const url=URL.createObjectURL(await response.blob());const a=document.createElement('a');a.href=url;a.download=`homeplan-${state.workspace}.local.json`;a.click();setTimeout(()=>URL.revokeObjectURL(url),1000);}catch(error){toast(error.message,true);}};
 window.addEventListener('hashchange',()=>{const route=location.hash.slice(1);if(pages[route]&&state.draft){state.route=route;render();}});
 window.addEventListener('beforeunload',event=>{upgrades?.flushDraft();if(state.draft&&dirty()){event.preventDefault();event.returnValue='';}});
