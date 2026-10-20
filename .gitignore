@@ -40,3 +40,6 @@ HANDOFF_CODEX.md
 VALIDATION.md
 tests/golden/scenarios.json
 tests/golden/units.json
+
+# Downloaded desktop program versions stay local
+versions/
