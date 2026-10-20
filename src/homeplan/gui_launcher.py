@@ -90,6 +90,7 @@ def browser_profile(root: Path, browser: str) -> Path:
                     "autofill": {"profile_enabled": False, "credit_card_enabled": False},
                     "credentials_enable_service": False,
                     "profile": {"password_manager_enabled": False},
+                    "signin": {"allowed": False, "allowed_on_next_startup": False},
                 },
                 output,
             )
@@ -114,6 +115,11 @@ def open_window(url: str) -> None:
         if browser.exists():
             root = data_root()
             profile = browser_profile(root, "edge" if browser.stem == "msedge" else "chrome")
+            # 전용 프로필에서도 Edge가 Windows 계정으로 자동 로그인할 수 있다.
+            # 매 실행에 적용해 기존 프로필도 보호하고 실행 중인 설정은 건드리지 않는다.
+            account_options = ["--disable-sync"]
+            if browser.stem == "msedge":
+                account_options.append("--disable-features=msImplicitSignin")
             subprocess.Popen(
                 [
                     str(browser),
@@ -122,6 +128,7 @@ def open_window(url: str) -> None:
                     "--window-size=1440,1000",
                     "--no-first-run",
                     "--no-default-browser-check",
+                    *account_options,
                 ],
                 stdin=subprocess.DEVNULL,
                 stdout=subprocess.DEVNULL,

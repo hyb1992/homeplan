@@ -1,7 +1,7 @@
 import json
 from unittest.mock import MagicMock, patch
 
-from homeplan.gui_launcher import browser_profile, ensure_server
+from homeplan.gui_launcher import browser_profile, ensure_server, open_window
 from homeplan.repository import Repository, seed_repository
 
 
@@ -16,6 +16,8 @@ def test_app_browser_profile_disables_autofill_without_changing_other_profiles(t
     assert preferences["autofill"]["profile_enabled"] is False
     assert preferences["autofill"]["credit_card_enabled"] is False
     assert preferences["profile"]["password_manager_enabled"] is False
+    assert preferences["signin"]["allowed"] is False
+    assert preferences["signin"]["allowed_on_next_startup"] is False
     assert ordinary.read_bytes() == original
 
 
@@ -26,6 +28,37 @@ def test_reopening_app_does_not_overwrite_live_browser_preferences(tmp_path):
     preferences.write_bytes(original)
     assert browser_profile(tmp_path, "edge") == profile
     assert preferences.read_bytes() == original
+
+
+def test_edge_launch_blocks_implicit_signin_and_sync_for_existing_profile(tmp_path, monkeypatch):
+    monkeypatch.delenv("HOMEPLAN_BROWSER_MODE", raising=False)
+    profile = browser_profile(tmp_path, "edge")
+    preferences = profile / "Default/Preferences"
+    original = b'{"signin":{"allowed":true},"existing":"keep"}'
+    preferences.write_bytes(original)
+    with (
+        patch("homeplan.gui_launcher.Path.exists", return_value=True),
+        patch("homeplan.gui_launcher.data_root", return_value=tmp_path),
+        patch("homeplan.gui_launcher.subprocess.Popen") as launch,
+    ):
+        open_window("http://127.0.0.1:8765")
+    arguments = launch.call_args.args[0]
+    assert f"--user-data-dir={profile}" in arguments
+    assert "--app=http://127.0.0.1:8765" in arguments
+    assert "--disable-sync" in arguments
+    assert "--disable-features=msImplicitSignin" in arguments
+    assert preferences.read_bytes() == original
+
+
+def test_default_browser_mode_still_uses_users_browser(monkeypatch):
+    monkeypatch.setenv("HOMEPLAN_BROWSER_MODE", "default")
+    with (
+        patch("homeplan.gui_launcher.webbrowser.open") as launch,
+        patch("homeplan.gui_launcher.subprocess.Popen") as app_launch,
+    ):
+        open_window("http://127.0.0.1:8765")
+    launch.assert_called_once_with("http://127.0.0.1:8765", new=1)
+    app_launch.assert_not_called()
 
 
 def test_fresh_distribution_only_creates_zero_plan_on_first_launch(tmp_path, household):
