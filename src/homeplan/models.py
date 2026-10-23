@@ -309,7 +309,16 @@ class PurchaseMilestone(InputModel):
 class PurchasePayment(InputModel):
     id: str = Field(min_length=1, max_length=80)
     category: Literal[
-        "계약금", "중도금", "잔금", "취득세", "중개보수", "법무·등기", "수리", "이사", "기타"
+        "약정금",
+        "계약금",
+        "중도금",
+        "잔금",
+        "취득세",
+        "중개보수",
+        "법무·등기",
+        "수리",
+        "이사",
+        "기타",
     ]
     amount: int = Field(gt=0, le=9007199254740991)
     paid_date: date
@@ -324,7 +333,10 @@ class PurchaseTracking(InputModel):
     price: int = Field(gt=0, le=9007199254740991)
     deposit_amount: Money = 0
     interim_amount: Money = 0
-    contract_date: date
+    contract_date: date | None = None
+    permit_required: YesNo = False
+    reservation_amount: Money = 0
+    reservation_in_deposit: YesNo = True
     milestones: list[PurchaseMilestone] = Field(default_factory=list, max_length=100)
     payments: list[PurchasePayment] = Field(default_factory=list, max_length=10000)
 
@@ -334,6 +346,8 @@ class PurchaseTracking(InputModel):
             raise ValueError("계약한 집의 이름을 입력하세요")
         if self.deposit_amount + self.interim_amount > self.price:
             raise ValueError("계약금과 중도금 합계가 계약 매매가보다 큽니다")
+        if self.reservation_in_deposit and self.reservation_amount > self.deposit_amount:
+            raise ValueError("계약금에 포함하는 약정금은 본계약 계약금 총액보다 클 수 없습니다")
         for rows in (self.milestones, self.payments):
             if len({row.id for row in rows}) != len(rows):
                 raise ValueError("계약 기록 ID가 중복됩니다")

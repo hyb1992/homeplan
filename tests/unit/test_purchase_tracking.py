@@ -113,3 +113,44 @@ def test_existing_data_stays_empty_and_tracking_survives_history_restore(tmp_pat
     assert restored["household"]["purchase_tracking"] is None
     assert len(repo.history("actual")) == 3
     assert repo.version("actual", 1)["purchase_tracking"]["payments"][2]["category"] == "중개보수"
+
+
+def test_reservation_and_additional_deposit_are_counted_once_before_contract():
+    value = record()
+    value.update(contract_date=None, permit_required=True, reservation_amount=5000000)
+    value["payments"][0].update(category="약정금", amount=5000000)
+    value["payments"][1]["amount"] = 45000000
+    tracking = PurchaseTracking.model_validate(value)
+    summary = purchase_progress(tracking, date(2026, 10, 23))
+    assert tracking.contract_date is None
+    assert summary["reservation_paid"] == 5000000
+    assert summary["deposit_paid"] == 50000000 and summary["price_paid"] == 50000000
+    assert summary["total_paid"] == 52000000 and summary["expenses_paid"] == 2000000
+    assert summary["remaining_price"] == 450000000 and summary["held_reservation"] == 0
+    value["reservation_in_deposit"] = False
+    held = purchase_progress(PurchaseTracking.model_validate(value), date(2026, 10, 23))
+    assert held["price_paid"] == 45000000 and held["deposit_paid"] == 45000000
+    assert held["held_reservation"] == 5000000 and held["expenses_paid"] == 2000000
+    assert held["total_paid"] == 52000000 and held["remaining_price"] == 455000000
+
+
+def test_undated_reservation_and_permit_steps_stay_before_later_dated_steps():
+    value = record()
+    value.update(contract_date=None, permit_required=True)
+    value["milestones"] = [
+        {"id": "reservation", "name": "약정금 지급", "status": "진행 중"},
+        {"id": "permit", "name": "토지거래허가 신청"},
+        {"id": "closing", "name": "잔금", "planned_date": "2027-01-20"},
+    ]
+    summary = purchase_progress(PurchaseTracking.model_validate(value), date(2026, 10, 23))
+    assert summary["next_step"]["id"] == "reservation"
+    assert summary["current_steps"] == ["약정금 지급"]
+
+
+def test_reservation_cannot_exceed_inclusive_contract_deposit():
+    value = record()
+    value["reservation_amount"] = 50000001
+    with pytest.raises(ValidationError):
+        PurchaseTracking.model_validate(value)
+    value["reservation_in_deposit"] = False
+    assert PurchaseTracking.model_validate(value).reservation_amount == 50000001
