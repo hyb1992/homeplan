@@ -100,6 +100,9 @@ def check(url: str, folder: Path) -> None:
         stored = api(f"/api/workspaces/{key}")
         tracking = stored["household"]["purchase_tracking"]
         assert tracking["price"] == 500000000 and len(tracking["payments"]) == 3
+        dates = {row["name"]: row["planned_date"] for row in tracking["milestones"]}
+        assert dates["중도금 지급"] == baseline["schedule"]["interim_date"]
+        assert dates["입주"] == baseline["schedule"]["move_in_date"]
         after = api("/api/evaluate", {"household": stored["household"]}, "POST")
         assert after["purchase_progress"]["price_paid"] == 50000000
         assert after["purchase_progress"]["expenses_paid"] == 2000000

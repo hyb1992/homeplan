@@ -29,7 +29,12 @@ export function createPurchaseTracking(ctx){
       try{await handler();}catch(error){if($('#tracking-error'))$('#tracking-error').textContent=error.message;else toast(error.message,true);}finally{if(button.isConnected)button.disabled=false;}
     };
   }
-  function agreementDialog(){
+  async function agreementDialog(){
+    const workspace=state.workspace;
+    if(!state.result||state.calculatedSnapshot!==JSON.stringify(state.draft))await ctx.calculate();
+    if(workspace!==state.workspace)throw new Error('계획이 바뀌었습니다. 계약 기록을 다시 열어 주세요.');
+    if(!state.result||state.calculatedSnapshot!==JSON.stringify(state.draft))throw new Error('매수계획의 입력을 확인하고 다시 계산한 뒤 기록을 시작하세요.');
+    if($('#modal').open)return;
     const previous=tracking(),listing=state.draft.listings.find(row=>row.id===state.draft.selected_listing)||state.draft.listings[0];
     const calculated=state.calculatedSnapshot===JSON.stringify(state.draft),payment=label=>calculated?Math.abs(state.result?.ledger.find(row=>row.source==='purchase'&&row.label===label)?.amount||0):0;
     const values=previous||{listing_id:listing.id,property_name:listing.name,price:listing.price,deposit_amount:payment('계약금'),interim_amount:state.draft.settings.interim_amount||0,contract_date:today(),milestones:[],payments:[]};
@@ -75,7 +80,7 @@ export function createPurchaseTracking(ctx){
   }
   document.addEventListener('click',async event=>{
     const button=event.target.closest('[data-purchase]');if(!button)return;if(state.saving){toast('저장이 끝난 뒤 다시 시도해 주세요.');return;}
-    try{const action=button.dataset.purchase;if(action==='agreement')agreementDialog();else if(action==='step-add'||action==='step-edit')milestoneDialog(button.dataset.id);else if(action==='payment-add'||action==='payment-edit')paymentDialog(button.dataset.id,button.dataset.category);else await remove(action==='step-delete'?'milestones':'payments',button.dataset.id);}catch(error){toast(error.message,true);}
+    try{const action=button.dataset.purchase;if(action==='agreement')await agreementDialog();else if(action==='step-add'||action==='step-edit')milestoneDialog(button.dataset.id);else if(action==='payment-add'||action==='payment-edit')paymentDialog(button.dataset.id,button.dataset.category);else await remove(action==='step-delete'?'milestones':'payments',button.dataset.id);}catch(error){toast(error.message,true);}
   });
   function bind(){if(state.route==='purchase')$('#purchase-filter')?.addEventListener('change',event=>{filter=event.target.value;ctx.render();});}
   return {render,bind};
