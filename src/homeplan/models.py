@@ -287,6 +287,61 @@ class LoanPrepayment(InputModel):
     enabled: YesNo = True
 
 
+class PurchaseMilestone(InputModel):
+    id: str = Field(min_length=1, max_length=80)
+    name: str = Field(min_length=1, max_length=80)
+    status: Literal["예정", "진행 중", "완료", "해당 없음"] = "예정"
+    planned_date: date | None = None
+    completed_date: date | None = None
+    memo: str = Field(default="", max_length=1000)
+
+    @model_validator(mode="after")
+    def completed(self) -> "PurchaseMilestone":
+        if not self.name.strip():
+            raise ValueError("진행 단계 이름을 입력하세요")
+        if self.status == "완료" and self.completed_date is None:
+            raise ValueError("완료한 단계의 실제 완료일을 입력하세요")
+        if self.status != "완료" and self.completed_date is not None:
+            raise ValueError("완료일은 완료 상태에서만 입력하세요")
+        return self
+
+
+class PurchasePayment(InputModel):
+    id: str = Field(min_length=1, max_length=80)
+    category: Literal[
+        "계약금", "중도금", "잔금", "취득세", "중개보수", "법무·등기", "수리", "이사", "기타"
+    ]
+    amount: int = Field(gt=0, le=9007199254740991)
+    paid_date: date
+    payer: Literal["공동", "남편", "아내"] = "공동"
+    recipient: str = Field(default="", max_length=120)
+    memo: str = Field(default="", max_length=1000)
+
+
+class PurchaseTracking(InputModel):
+    listing_id: str = ""
+    property_name: str = Field(min_length=1, max_length=120)
+    price: int = Field(gt=0, le=9007199254740991)
+    deposit_amount: Money = 0
+    interim_amount: Money = 0
+    contract_date: date
+    milestones: list[PurchaseMilestone] = Field(default_factory=list, max_length=100)
+    payments: list[PurchasePayment] = Field(default_factory=list, max_length=10000)
+
+    @model_validator(mode="after")
+    def valid_records(self) -> "PurchaseTracking":
+        if not self.property_name.strip():
+            raise ValueError("계약한 집의 이름을 입력하세요")
+        if self.deposit_amount + self.interim_amount > self.price:
+            raise ValueError("계약금과 중도금 합계가 계약 매매가보다 큽니다")
+        for rows in (self.milestones, self.payments):
+            if len({row.id for row in rows}) != len(rows):
+                raise ValueError("계약 기록 ID가 중복됩니다")
+        if sum(row.amount for row in self.payments) > 9007199254740991:
+            raise ValueError("지급 합계가 표시 가능한 금액 범위를 넘었습니다")
+        return self
+
+
 class Household(InputModel):
     settings: Settings
     fund_events: list[FundEvent] = Field(default_factory=list)
@@ -296,6 +351,7 @@ class Household(InputModel):
     listings: list[Listing] = Field(min_length=1)
     selected_listing: str = ""
     bank_quotes: list[BankQuote] = Field(default_factory=list)
+    purchase_tracking: PurchaseTracking | None = None
 
     @model_validator(mode="after")
     def unique_ids(self) -> "Household":
@@ -447,5 +503,6 @@ class Result(BaseModel):
     loans: dict[str, Any]
     ledger: list[LedgerEntry]
     daily_balances: list[DailyBalance]
+    purchase_progress: dict[str, Any] | None = None
     assumptions: list[dict[str, Any]] = Field(default_factory=list)
     warnings: list[str] = Field(default_factory=list)

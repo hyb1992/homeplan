@@ -9,6 +9,7 @@ from .ledger import build_ledger, is_confirmed
 from .loans import loan_amounts
 from .models import Check, Household, Listing, Result
 from .money import korean_money, won
+from .purchase_tracking import purchase_progress
 from .rules import RuleBook, acquisition_taxes, brokerage_fee, registration_costs
 
 
@@ -386,6 +387,7 @@ def evaluate(
         repayment_details[key] = rows
     loan_summary["repayment_details"] = repayment_details
     return Result(
+        purchase_progress=purchase_progress(h.purchase_tracking, as_of or h.day("asset_base_date")),
         status=status,
         checks=checks,
         kpis=kpis,

@@ -13,6 +13,7 @@ from pathlib import Path
 import httpx
 from check_fund_builder import check as check_fund_builder
 from check_planning_menus import check as check_menus
+from check_purchase_tracking import check as check_tracking
 from playwright.sync_api import expect, sync_playwright
 
 
@@ -91,6 +92,7 @@ def main() -> None:
             assert stored["household"]["fund_events"][0]["value"] == 12340000
             check_menus(base, root)
             check_fund_builder(base, root)
+            check_tracking(base, root)
         finally:
             process.terminate()
             process.wait(timeout=10)
@@ -111,6 +113,7 @@ def main() -> None:
                 "save_restart": "passed",
                 "planning_menus": "passed",
                 "fund_builder_and_composition": "passed",
+                "purchase_tracking": "passed",
                 "python_on_path": False,
             }
         )

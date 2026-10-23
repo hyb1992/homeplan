@@ -108,6 +108,16 @@ def changes_between(before: dict[str, Any], after: dict[str, Any]) -> list[dict[
                         "after": new,
                     }
                 )
+    if before.get("purchase_tracking") != after.get("purchase_tracking"):
+        result.append(
+            {
+                "kind": "purchase_tracking",
+                "key": "purchase_tracking",
+                "label": "계약 진행·실제 지급 기록",
+                "before": before.get("purchase_tracking"),
+                "after": after.get("purchase_tracking"),
+            }
+        )
     return result
 
 
