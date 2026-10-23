@@ -1,4 +1,4 @@
-globalThis.HOMEPLAN_BUILD={"revision": "85853ce", "engine": "67e1416b8a4233df", "build": "85853ce10f8056e9e7e6f3c9409f9a70dc866683", "version": "0.7.0", "built_at": "2026-10-23T13:53:05.833055+00:00"};
+globalThis.HOMEPLAN_BUILD={"revision": "4851fc5", "engine": "22172ae095ef29dc", "build": "4851fc5501f227f032d187ceabbdba252f023cae", "version": "0.7.1", "built_at": "2026-10-23T14:48:04.843797+00:00"};
 const realFetch=globalThis.fetch.bind(globalThis);
 const status=document.querySelector('#content');
 const notice=document.createElement('div');
@@ -8,7 +8,7 @@ document.querySelector('main').prepend(notice);
 document.querySelector('.local-status').textContent='이 브라우저에 저장';
 globalThis.HOMEPLAN_BROWSER=true;
 window.homeplanStartup?.wait(180000);
-const worker=new Worker(new URL('./browser-worker.js?v=67e1416b8a4233df',import.meta.url));
+const worker=new Worker(new URL('./browser-worker.js?v=22172ae095ef29dc',import.meta.url));
 const pending=new Map();let sequence=0;
 const request=payload=>new Promise((resolve,reject)=>{const id=++sequence;const timer=setTimeout(()=>{pending.delete(id);reject(new Error('처리 시간이 초과되었습니다. 연결을 확인하고 다시 열어주세요.'));},payload.init?180000:120000);pending.set(id,{resolve,reject,timer});worker.postMessage({id,...payload});});
 worker.onmessage=({data})=>{
@@ -27,7 +27,7 @@ try{
     const result=await locked(()=>request({path:url.pathname+url.search,method:options.method||'GET',body:options.body||''}));
     return new Response(result.body,{status:result.status,headers:result.headers});
   };
-  await import('./app.js?v=67e1416b8a4233df');
+  await import('./app.js?v=22172ae095ef29dc');
   navigator.storage?.persist?.().catch(()=>{});
 }catch(error){
   if(window.homeplanStartup){window.homeplanStartup.fail(error.message);}else{

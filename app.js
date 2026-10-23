@@ -1,11 +1,11 @@
-import {createPurchaseTracking} from './purchase-tracking.mjs?v=67e1416b8a4233df';
-import {moneyControl, dateControl, readMoneyInput, normalizeMoneyInput, installInputControls, closeCalendar, refreshCalendar, formatMoney, moneyWords} from './form-inputs.mjs?v=67e1416b8a4233df';
-import {seedExpenseItems} from './expense-plan.mjs?v=67e1416b8a4233df';
-import {createUpgradeTools} from './workspace-tools.mjs?v=67e1416b8a4233df';
-import {installUpdateNotice} from './update-notice.mjs?v=67e1416b8a4233df';
-import {renderPurchaseCosts} from './purchase-costs.mjs?v=67e1416b8a4233df';
-import {createPlanningMenus} from './planning-menus.mjs?v=67e1416b8a4233df';
-import {installFundBuilder,renderFundComposition,fundComposition,fundTypes} from './fund-builder.mjs?v=67e1416b8a4233df';
+import {createPurchaseTracking} from './purchase-tracking.mjs?v=22172ae095ef29dc';
+import {moneyControl, dateControl, readMoneyInput, normalizeMoneyInput, installInputControls, closeCalendar, refreshCalendar, formatMoney, moneyWords} from './form-inputs.mjs?v=22172ae095ef29dc';
+import {seedExpenseItems} from './expense-plan.mjs?v=22172ae095ef29dc';
+import {createUpgradeTools} from './workspace-tools.mjs?v=22172ae095ef29dc';
+import {installUpdateNotice} from './update-notice.mjs?v=22172ae095ef29dc';
+import {renderPurchaseCosts} from './purchase-costs.mjs?v=22172ae095ef29dc';
+import {createPlanningMenus} from './planning-menus.mjs?v=22172ae095ef29dc';
+import {installFundBuilder,renderFundComposition,fundComposition,fundTypes} from './fund-builder.mjs?v=22172ae095ef29dc';
 
 const $ = (selector, root = document) => root.querySelector(selector);
 const $$ = (selector, root = document) => [...root.querySelectorAll(selector)];
@@ -34,7 +34,7 @@ const icons = {
 };
 const pages = {
   plan:['매수계획','매수 계획을 한눈에','매물과 일정을 바꾸며 우리 가족의 자금을 확인하세요.'],
-  purchase:['계약·지급','계약부터 입주까지 기록하기','계약한 집의 진행 상황과 실제로 지불한 돈을 기록하세요.'],
+  purchase:['계약·지급','약정부터 입주까지 기록하기','약정금·허가 준비부터 실제 지급액과 진행 상황을 기록하세요.'],
   costs:['매수 비용','집값 외에 드는 돈을 먼저','취득세부터 법무사·수리·이사 비용까지, 항목별로 정하세요.'],
   funds:['우리 자금','우리의 자금을 모아보기','예금부터 앞으로 들어올 돈까지, 항목을 자유롭게 추가하세요.'],
   support:['부모님 지원','도움을 받는 일정도 함께','증여와 차입을 구분하고, 실제 입금일을 기준으로 계획하세요.'],
