@@ -1,10 +1,11 @@
-import {moneyControl, dateControl, readMoneyInput, normalizeMoneyInput, installInputControls, closeCalendar, refreshCalendar, formatMoney, moneyWords} from './form-inputs.mjs?v=01dbe88933a7c68a';
-import {seedExpenseItems} from './expense-plan.mjs?v=01dbe88933a7c68a';
-import {createUpgradeTools} from './workspace-tools.mjs?v=01dbe88933a7c68a';
-import {installUpdateNotice} from './update-notice.mjs?v=01dbe88933a7c68a';
-import {renderPurchaseCosts} from './purchase-costs.mjs?v=01dbe88933a7c68a';
-import {createPlanningMenus} from './planning-menus.mjs?v=01dbe88933a7c68a';
-import {installFundBuilder,renderFundComposition,fundComposition,fundTypes} from './fund-builder.mjs?v=01dbe88933a7c68a';
+import {createPurchaseTracking} from './purchase-tracking.mjs?v=67e1416b8a4233df';
+import {moneyControl, dateControl, readMoneyInput, normalizeMoneyInput, installInputControls, closeCalendar, refreshCalendar, formatMoney, moneyWords} from './form-inputs.mjs?v=67e1416b8a4233df';
+import {seedExpenseItems} from './expense-plan.mjs?v=67e1416b8a4233df';
+import {createUpgradeTools} from './workspace-tools.mjs?v=67e1416b8a4233df';
+import {installUpdateNotice} from './update-notice.mjs?v=67e1416b8a4233df';
+import {renderPurchaseCosts} from './purchase-costs.mjs?v=67e1416b8a4233df';
+import {createPlanningMenus} from './planning-menus.mjs?v=67e1416b8a4233df';
+import {installFundBuilder,renderFundComposition,fundComposition,fundTypes} from './fund-builder.mjs?v=67e1416b8a4233df';
 
 const $ = (selector, root = document) => root.querySelector(selector);
 const $$ = (selector, root = document) => [...root.querySelectorAll(selector)];
@@ -20,6 +21,7 @@ const shortMoney = value => {
   return sign + (eok ? `${eok}억` : '') + (man ? `${eok ? ' ' : ''}${won(man)}만` : '');
 };
 const icons = {
+  purchase:'M9 3h6v3H9zM6 5H4v16h16V5h-2M8 11l2 2 5-5M8 17h8',
   plan:'M3 10 12 3l9 7M5 9v12h14V9M9 21v-8h6v8',
   costs:'M4 3h16v18H4zM8 8h8M8 12h8M8 16h5',
   funds:'M3 7h18v14H3zM3 7l3-4h12l3 4M15 13h6v4h-6z',
@@ -32,6 +34,7 @@ const icons = {
 };
 const pages = {
   plan:['매수계획','매수 계획을 한눈에','매물과 일정을 바꾸며 우리 가족의 자금을 확인하세요.'],
+  purchase:['계약·지급','계약부터 입주까지 기록하기','계약한 집의 진행 상황과 실제로 지불한 돈을 기록하세요.'],
   costs:['매수 비용','집값 외에 드는 돈을 먼저','취득세부터 법무사·수리·이사 비용까지, 항목별로 정하세요.'],
   funds:['우리 자금','우리의 자금을 모아보기','예금부터 앞으로 들어올 돈까지, 항목을 자유롭게 추가하세요.'],
   support:['부모님 지원','도움을 받는 일정도 함께','증여와 차입을 구분하고, 실제 입금일을 기준으로 계획하세요.'],
@@ -73,6 +76,7 @@ const state = {workspace:null,workspaces:[],base:null,draft:null,revision:0,resu
 const inputProblems=new Map();
 let upgrades;
 let menus;
+let purchase;
 let toastTimer;
 function toast(message, error = false) {
   const element = $('#toast'); element.textContent = message; element.className = `visible${error ? ' error' : ''}`;
@@ -326,7 +330,7 @@ function render() {
   $('#navigation').innerHTML=Object.entries(pages).map(([key,[name]])=>`<a href="#${key}" class="nav-item ${state.route===key?'active':''}" aria-current="${state.route===key?'page':'false'}"><svg viewBox="0 0 24 24"><path d="${icons[key]}" stroke-linecap="round" stroke-linejoin="round"/></svg><span>${name}</span></a>`).join('');
   $('#breadcrumb-title').textContent=label;$('#page-title').textContent=title;$('#page-description').textContent=description;
   $('#workspace-switch').innerHTML=state.workspaces.map(w=>`<button data-workspace="${esc(w.id)}" class="${w.id===state.workspace?'active':''}" aria-pressed="${w.id===state.workspace}">${esc(w.label)}</button>`).join('');
-  $('#content').innerHTML=`<nav class="mobile-nav">${Object.entries(pages).map(([key,[name]])=>`<a href="#${key}" class="${state.route===key?'active':''}">${name}</a>`).join('')}</nav>${state.workspace==='demo'?'<div class="demo-banner">가상 테스트 중입니다. 이 화면에서 저장해도 실제 가구 데이터는 바뀌지 않아요.</div>':''}`+({plan:renderPlan,costs:renderCosts,funds:renderFunds,support:renderSupport,settings:renderSettings,ledger:renderLedger,leave:menus.renderLeave,repayment:menus.renderRepayment,banks:menus.renderBanks}[state.route])();
+  $('#content').innerHTML=`<nav class="mobile-nav">${Object.entries(pages).map(([key,[name]])=>`<a href="#${key}" class="${state.route===key?'active':''}">${name}</a>`).join('')}</nav>${state.workspace==='demo'?'<div class="demo-banner">가상 테스트 중입니다. 이 화면에서 저장해도 실제 가구 데이터는 바뀌지 않아요.</div>':''}`+({plan:renderPlan,costs:renderCosts,funds:renderFunds,support:renderSupport,settings:renderSettings,ledger:renderLedger,leave:menus.renderLeave,repayment:menus.renderRepayment,banks:menus.renderBanks,purchase:purchase.render}[state.route])();
   updateSavedState();
   if(state.route==='plan'){syncRefundLink();$('#refund-interim-link').onclick=toggleRefundLink;}
   bindDateCash();
@@ -354,6 +358,7 @@ function render() {
   for(const problem of inputProblems.values()){if(problem.listingId&&problem.listingId!==selected().id)continue;const input=$(`[data-scope="${problem.scope}"][data-key="${problem.key}"]`);if(input){input.value=problem.raw;input.classList.add('invalid');input.setCustomValidity(problem.error);}}
   upgrades?.afterRender();
   menus?.bind();
+  purchase?.bind();
 }
 async function calculate(goToPlan=false) {
   if(!validInputs())return;
@@ -583,4 +588,5 @@ async function boot(){state.workspaces=await api('/api/workspaces');let previous
 if(!globalThis.HOMEPLAN_BROWSER){const heartbeat=()=>fetch('/api/heartbeat',{method:'POST'}).catch(()=>{});heartbeat();setInterval(heartbeat,20000);document.addEventListener('visibilitychange',heartbeat);}
 upgrades=createUpgradeTools({state,inputProblems,$,$$,esc,won,shortMoney,clone,api,post,toast,render,calculate,validInputs,openModal,closeModal,confirmation,field,selectField,checkField,dialogInput,dialogSelect,readMoneyInput,commitExpensePlan,expenseRows,switchWorkspace,settingLabels});
 menus=createPlanningMenus({state,$,$$,esc,won,shortMoney,clone,toast,field,checkField,openModal,closeModal,confirmation,render,calculate,upgrades:()=>upgrades});
+purchase=createPurchaseTracking({state,$,$$,esc,won,shortMoney,clone,openModal,closeModal,confirmation,toast,render,calculate,upgrades:()=>upgrades});
 boot().then(()=>{window.homeplanStartup?.done();installUpdateNotice({canReload:()=>!dirty()&&!state.saving&&!state.evaluating&&!$('#modal').open,beforeReload:()=>upgrades?.flushDraft()});}).catch(error=>{if(window.homeplanStartup)window.homeplanStartup.fail(error.message);else $('#content').innerHTML=`<section class="card empty">계획을 불러오지 못했습니다.<br>${esc(error.message)}<br>창을 닫고 바탕화면 바로가기를 다시 실행해 주세요.</section>`;});
